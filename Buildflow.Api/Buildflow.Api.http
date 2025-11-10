@@ -1,0 +1,6 @@
+@Buildflow.Api_HostAddress = http://localhost:5033
+
+GET {{Buildflow.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,7 @@
+create table report.report_Type_master(
+report_type_id serial primary key,
+report_type varchar(255)
+);
+ALTER TABLE report.reports
+ALTER COLUMN report_type TYPE integer
+USING report_type::integer;
