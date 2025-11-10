@@ -62,4 +62,8 @@ public partial class Project
     public virtual ICollection<ProjectTeam> ProjectTeams { get; set; } = new List<ProjectTeam>();
 
     public virtual ProjectType ProjectType { get; set; } = null!;
+
+    public virtual ICollection<StockInward> StockInwards { get; set; } = new List<StockInward>();
+
+    public virtual ICollection<StockOutward> StockOutwards { get; set; } = new List<StockOutward>();
 }

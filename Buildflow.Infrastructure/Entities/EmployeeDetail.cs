@@ -81,6 +81,12 @@ public partial class EmployeeDetail
 
     public virtual ICollection<ReportAssignee> ReportAssigneeSendByNavigations { get; set; } = new List<ReportAssignee>();
 
+    public virtual ICollection<StockInward> StockInwards { get; set; } = new List<StockInward>();
+
+    public virtual ICollection<StockOutward> StockOutwardIssuedTos { get; set; } = new List<StockOutward>();
+
+    public virtual ICollection<StockOutward> StockOutwardRequestedBies { get; set; } = new List<StockOutward>();
+
     public virtual ICollection<Ticket> TicketApprovedByNavigations { get; set; } = new List<Ticket>();
 
     public virtual ICollection<Ticket> TicketAssignByNavigations { get; set; } = new List<Ticket>();
