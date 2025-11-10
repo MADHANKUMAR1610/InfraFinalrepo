@@ -6,6 +6,7 @@ using Buildflow.Library.Repository.Interfaces;
 using Buildflow.Library.UOW;
 using Buildflow.Service.Service;
 using Buildflow.Service.Service.Employee;
+using Buildflow.Service.Service.Inventory;
 using Buildflow.Service.Service.Master;
 using Buildflow.Service.Service.Notification;
 using Buildflow.Service.Service.Project;
@@ -88,6 +89,9 @@ builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+
+builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<RegisterService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<ProjectService>();

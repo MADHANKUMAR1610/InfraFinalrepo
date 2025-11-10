@@ -135,6 +135,11 @@ namespace Buildflow.Service.Service.Project
             return await _unitOfWork.Boq.UpsertBoqAsync(request);
         }
 
+        public async Task<IEnumerable<ProjectData>> GetApprovedProjectsByEmployeeAsync(int employeeId)
+        {
+            return await _unitOfWork.Projects.GetApprovedProjectsByEmployeeAsync(employeeId);
+        }
+
 
     }
 }

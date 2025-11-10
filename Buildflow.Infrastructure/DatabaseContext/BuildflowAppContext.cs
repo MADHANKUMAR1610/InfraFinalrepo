@@ -82,7 +82,9 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<Role> Roles { get; set; }
 
-    public virtual DbSet<Sample> Samples { get; set; }
+    public virtual DbSet<StockInward> StockInwards { get; set; }
+
+    public virtual DbSet<StockOutward> StockOutwards { get; set; }
 
     public virtual DbSet<Subcontractor> Subcontractors { get; set; }
 
@@ -1158,16 +1160,94 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
         });
 
-        modelBuilder.Entity<Sample>(entity =>
+        modelBuilder.Entity<StockInward>(entity =>
         {
-            entity.HasKey(e => e.SampleId).HasName("sample_pkey");
+            entity.HasKey(e => e.StockinwardId).HasName("stock_inward_pkey");
 
-            entity.ToTable("sample", "inventory");
+            entity.ToTable("stock_inward", "inventory");
 
-            entity.Property(e => e.SampleId).HasColumnName("sample_id");
-            entity.Property(e => e.SampleName)
-                .HasMaxLength(10)
-                .HasColumnName("sample_name");
+            entity.Property(e => e.StockinwardId).HasColumnName("stockinward_id");
+            entity.Property(e => e.DateReceived)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("date_received");
+            entity.Property(e => e.Grn)
+                .HasMaxLength(100)
+                .HasColumnName("grn");
+            entity.Property(e => e.Itemname)
+                .HasMaxLength(200)
+                .HasColumnName("itemname");
+            entity.Property(e => e.ProjectId).HasColumnName("project_id");
+            entity.Property(e => e.QuantityReceived)
+                .HasPrecision(18, 2)
+                .HasColumnName("quantity_received");
+            entity.Property(e => e.ReceivedbyId).HasColumnName("receivedby_id");
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasColumnName("status");
+            entity.Property(e => e.Unit)
+                .HasMaxLength(50)
+                .HasColumnName("unit");
+            entity.Property(e => e.VendorId).HasColumnName("vendor_id");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.StockInwards)
+                .HasForeignKey(d => d.ProjectId)
+                .HasConstraintName("fk_stock_inward_project");
+
+            entity.HasOne(d => d.Receivedby).WithMany(p => p.StockInwards)
+                .HasForeignKey(d => d.ReceivedbyId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_stock_inward_employee");
+
+            entity.HasOne(d => d.Vendor).WithMany(p => p.StockInwards)
+                .HasForeignKey(d => d.VendorId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_stock_inward_vendor");
+        });
+
+        modelBuilder.Entity<StockOutward>(entity =>
+        {
+            entity.HasKey(e => e.StockOutwardId).HasName("stock_outward_pkey");
+
+            entity.ToTable("stock_outward", "inventory");
+
+            entity.Property(e => e.StockOutwardId).HasColumnName("stock_outward_id");
+            entity.Property(e => e.DateIssued)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("date_issued");
+            entity.Property(e => e.IssueNo)
+                .HasMaxLength(100)
+                .HasColumnName("issue_no");
+            entity.Property(e => e.IssuedQuantity)
+                .HasPrecision(18, 2)
+                .HasColumnName("issued_quantity");
+            entity.Property(e => e.IssuedToId).HasColumnName("issued_to_id");
+            entity.Property(e => e.ItemName)
+                .HasMaxLength(200)
+                .HasColumnName("item_name");
+            entity.Property(e => e.ProjectId).HasColumnName("project_id");
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.RequestedById).HasColumnName("requested_by_id");
+            entity.Property(e => e.Status)
+                .HasMaxLength(50)
+                .HasColumnName("status");
+            entity.Property(e => e.Unit)
+                .HasMaxLength(50)
+                .HasColumnName("unit");
+
+            entity.HasOne(d => d.IssuedTo).WithMany(p => p.StockOutwardIssuedTos)
+                .HasForeignKey(d => d.IssuedToId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_stock_outward_issued_to");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.StockOutwards)
+                .HasForeignKey(d => d.ProjectId)
+                .HasConstraintName("fk_stock_outward_project");
+
+            entity.HasOne(d => d.RequestedBy).WithMany(p => p.StockOutwardRequestedBies)
+                .HasForeignKey(d => d.RequestedById)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_stock_outward_requested_by");
         });
 
         modelBuilder.Entity<Subcontractor>(entity =>

@@ -33,6 +33,7 @@ namespace Buildflow.Library.UOW
         ITicketRepository TicketRepository { get; }
 
         IEmployeeRepository EmployeeRepository { get; }
+        IInventoryRepository InventoryRepository { get; }
         Task<int> CompleteAsync();
     }
 }

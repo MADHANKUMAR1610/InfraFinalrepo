@@ -868,5 +868,41 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
             }
         }
 
+        public async Task<IEnumerable<ProjectData>> GetApprovedProjectsByEmployeeAsync(int employeeId)
+        {
+            // Fetch projects where ProjectStatus is "Approved"
+            // and employee exists in any team role arrays.
+            var projects = await Context.Projects
+                .AsNoTracking()
+                .Where(p => p.ProjectStatus.ToLower() == "approved" &&
+                    p.ProjectTeams.Any(pt =>
+                        (pt.PmId != null && pt.PmId.Contains(employeeId)) ||
+                        (pt.ApmId != null && pt.ApmId.Contains(employeeId)) ||
+                        (pt.LeadEnggId != null && pt.LeadEnggId.Contains(employeeId)) ||
+                        (pt.SiteSupervisorId != null && pt.SiteSupervisorId.Contains(employeeId)) ||
+                        (pt.QsId != null && pt.QsId.Contains(employeeId)) ||
+                        (pt.AqsId != null && pt.AqsId.Contains(employeeId)) ||
+                        (pt.SiteEnggId != null && pt.SiteEnggId.Contains(employeeId)) ||
+                        (pt.EnggId != null && pt.EnggId.Contains(employeeId)) ||
+                        (pt.DesignerId != null && pt.DesignerId.Contains(employeeId)) ||
+                        (pt.VendorId != null && pt.VendorId.Contains(employeeId)) ||
+                        (pt.SubcontractorId != null && pt.SubcontractorId.Contains(employeeId))
+                    )
+                )
+                .Select(p => new ProjectData
+                {
+                    ProjectId = p.ProjectId,
+                    ProjectName = p.ProjectName,
+                    ProjectCode = p.ProjectCode,
+                    ProjectStatus = p.ProjectStatus,
+                    ProjectLocation = p.ProjectLocation,
+                
+                })
+                .ToListAsync();
+
+            return projects;
+        }
+
+
     }
 }

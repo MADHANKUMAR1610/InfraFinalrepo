@@ -57,6 +57,8 @@ public partial class Vendor
 
     public virtual ICollection<Material> Materials { get; set; } = new List<Material>();
 
+    public virtual ICollection<StockInward> StockInwards { get; set; } = new List<StockInward>();
+
     public virtual ICollection<VendorDepartment> VendorDepartments { get; set; } = new List<VendorDepartment>();
 
     public virtual ICollection<Vendorrole> Vendorroles { get; set; } = new List<Vendorrole>();

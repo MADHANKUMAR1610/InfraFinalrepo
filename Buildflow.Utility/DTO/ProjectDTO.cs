@@ -370,6 +370,8 @@ public class BoqDetailsFullDto
     {
         public int ProjectId { get; set; }
         public string ProjectName { get; set; }
+         public string ProjectCode { get; set; }
+
         public string ProjectDescription { get; set; }
         public int ProjectTypeId { get; set; }
         public string ProjectTypeName { get; set; }

@@ -513,6 +513,24 @@ namespace Buildflow.Api.Controllers.Project
 
 
         }
+
+        [HttpGet("get-approved-projects-by-employee/{employeeId}")]
+        public async Task<IActionResult> GetApprovedProjectsByEmployee(int employeeId)
+        {
+            try
+            {
+                var projects = await _projectService.GetApprovedProjectsByEmployeeAsync(employeeId);
+
+                if (projects == null || !projects.Any())
+                    return Ok(new List<ProjectData>()); 
+
+                return Ok(projects);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Failed to fetch approved projects", error = ex.Message });
+            }
+        }
     }
 }
 
