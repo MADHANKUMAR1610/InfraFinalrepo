@@ -51,7 +51,7 @@ namespace Buildflow.Library.Repository
                     VendorId = dto.VendorId,
                     QuantityReceived = dto.QuantityReceived,
                     Unit = dto.Unit,
-                    DateReceived = dto.DateReceived ?? DateTime.Now.ToLocalTime(),
+                    DateReceived = dto.DateReceived?.ToUniversalTime() ?? DateTime.UtcNow,
                     ReceivedbyId = dto.ReceivedById,
                     Status = dto.Status ?? "Pending",
                     Remarks = dto.Remarks
@@ -80,6 +80,8 @@ namespace Buildflow.Library.Repository
                     VendorName = vendorName,
                     ReceivedById = inward.ReceivedbyId,
                     ReceivedByName = receivedByName,
+                    QuantityReceived = inward.QuantityReceived,
+                    DateReceived = inward.DateReceived,
                     Unit = inward.Unit,
                     Status = inward.Status,
                     Remarks = inward.Remarks,
@@ -107,7 +109,7 @@ namespace Buildflow.Library.Repository
                     IssuedQuantity = dto.IssuedQuantity,
                     Unit = dto.Unit,
                     IssuedToId = dto.IssuedToId,
-                    DateIssued = (dto.DateIssued ?? DateTime.UtcNow).ToLocalTime(),
+                    DateIssued = dto.DateIssued?.ToUniversalTime() ?? DateTime.UtcNow,
                     Status = dto.Status ?? "Pending",
                     Remarks = dto.Remarks,
                     
