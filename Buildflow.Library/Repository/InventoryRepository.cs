@@ -21,11 +21,7 @@ namespace Buildflow.Library.Repository
         private readonly ILogger<GenericRepository<StockInward>> _logger;
         private readonly IConfiguration _configuration;
         private readonly BuildflowAppContext _context;
-        public InventoryRepository(
-           IConfiguration configuration,
-           BuildflowAppContext context,
-           ILogger<GenericRepository<StockInward>> logger)
-           : base(context, logger)
+        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<GenericRepository<StockInward>> logger) : base(context, logger)
         {
             _logger = logger;       
             _configuration = configuration;
@@ -33,7 +29,6 @@ namespace Buildflow.Library.Repository
         }
 
 
-        public ILogger<GenericRepository<StockInward>> InventoryLogger { get; }
 
         public IDbConnection CreateConnection() =>
             new NpgsqlConnection(_configuration.GetConnectionString("DefaultConnection"));

@@ -8,10 +8,11 @@ namespace Buildflow.Utility.DTO
 {
     public  class MaterialDto
     {
-        public string? MaterialList { get; set; }
-        public int InStockQuantity { get; set; }
-        public int RequiredQuantity { get; set; }
-        public string? Level { get; set; }
-        public string? RequestStatus { get; set; }
+        public int SNo { get; set; }
+        public string MaterialList { get; set; }
+        public string InStockQuantity { get; set; }
+        public string RequiredQuantity { get; set; }
+        public string Level { get; set; }
+        public string RequestStatus { get; set; }
     }
 }

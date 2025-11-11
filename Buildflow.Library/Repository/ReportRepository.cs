@@ -301,7 +301,7 @@ namespace Buildflow.Library.Repository
                         ReportCode = report.ReportCode,
                         ReportType = report.ReportType,
                         ReportTypeName = reportType?.ReportType,
-                        ProjectId = report.ProjectId,
+                        ProjectId = (int)report.ProjectId,
                         ProjectName = project?.ProjectName,
                         ReportDate = report.ReportDate,
                         ReportedBy = report.ReportedBy,

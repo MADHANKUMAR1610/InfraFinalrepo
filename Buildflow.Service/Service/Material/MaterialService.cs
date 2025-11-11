@@ -1,4 +1,5 @@
-﻿using Buildflow.Library.UOW;
+﻿using Buildflow.Library.Repository.Interfaces;
+using Buildflow.Library.UOW;
 using Buildflow.Utility.DTO;
 using System;
 using System.Collections.Generic;
@@ -8,19 +9,20 @@ using System.Threading.Tasks;
 
 namespace Buildflow.Service.Service.Material
 {
-    public class MaterialService
+       public class MaterialService
     {
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IMaterialRepository _materialRepository;
 
-        public MaterialService(IUnitOfWork unitOfWork)
+        public MaterialService(IMaterialRepository materialRepository)
         {
-            _unitOfWork = unitOfWork;
+            _materialRepository = materialRepository;
         }
 
-        public async Task<IEnumerable<MaterialDto>> GetMaterialListAsync(int projectId)
+        public async Task<List<MaterialDto>> GetMaterialAsync(int projectId)
         {
-            return await _unitOfWork.MaterialRepository.GetMaterialListAsync(projectId);
+            return await _materialRepository.GetMaterialAsync(projectId);
         }
     }
+
 }
 

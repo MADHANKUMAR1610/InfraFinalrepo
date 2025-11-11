@@ -5,12 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+
 namespace Buildflow.Library.Repository.Interfaces
 {
-    public interface IMaterialRepository
+    public interface IMaterialStatusRepository
     {
-
-        Task<List<MaterialDto>> GetMaterialAsync(int projectId);
-
+        Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId);
     }
 }
