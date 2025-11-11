@@ -8,6 +8,7 @@ using Buildflow.Service.Service;
 using Buildflow.Service.Service.Employee;
 using Buildflow.Service.Service.Inventory;
 using Buildflow.Service.Service.Master;
+using Buildflow.Service.Service.Material;
 using Buildflow.Service.Service.Notification;
 using Buildflow.Service.Service.Project;
 using Buildflow.Service.Service.Report;
@@ -90,7 +91,9 @@ builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
 
+builder.Services.AddScoped<MaterialService>();
 builder.Services.AddScoped<InventoryService>();
 builder.Services.AddScoped<RegisterService>();
 builder.Services.AddScoped<ReportService>();
