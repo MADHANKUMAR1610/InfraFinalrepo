@@ -1167,9 +1167,7 @@ public partial class BuildflowAppContext : DbContext
             entity.ToTable("stock_inward", "inventory");
 
             entity.Property(e => e.StockinwardId).HasColumnName("stockinward_id");
-            entity.Property(e => e.DateReceived)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("date_received");
+            entity.Property(e => e.DateReceived).HasColumnName("date_received");
             entity.Property(e => e.Grn)
                 .HasMaxLength(100)
                 .HasColumnName("grn");
@@ -1212,9 +1210,7 @@ public partial class BuildflowAppContext : DbContext
             entity.ToTable("stock_outward", "inventory");
 
             entity.Property(e => e.StockOutwardId).HasColumnName("stock_outward_id");
-            entity.Property(e => e.DateIssued)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("date_issued");
+            entity.Property(e => e.DateIssued).HasColumnName("date_issued");
             entity.Property(e => e.IssueNo)
                 .HasMaxLength(100)
                 .HasColumnName("issue_no");
