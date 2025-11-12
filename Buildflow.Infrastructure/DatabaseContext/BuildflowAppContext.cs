@@ -26,6 +26,8 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<BoqItem> BoqItems { get; set; }
 
+    public virtual DbSet<DailyStock> DailyStocks { get; set; }
+
     public virtual DbSet<Department> Departments { get; set; }
 
     public virtual DbSet<DepartmentRoleMapping> DepartmentRoleMappings { get; set; }
@@ -273,6 +275,27 @@ public partial class BuildflowAppContext : DbContext
             entity.HasOne(d => d.Boq).WithMany(p => p.BoqItems)
                 .HasForeignKey(d => d.BoqId)
                 .HasConstraintName("fk_boq_items_boq");
+        });
+
+        modelBuilder.Entity<DailyStock>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("daily_stock_pkey");
+
+            entity.ToTable("daily_stock", "inventory");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Date)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP")
+                .HasColumnName("date");
+            entity.Property(e => e.DefaultQty)
+                .HasPrecision(18, 2)
+                .HasColumnName("default_qty");
+            entity.Property(e => e.ItemName)
+                .HasMaxLength(255)
+                .HasColumnName("item_name");
+            entity.Property(e => e.RemainingQty)
+                .HasPrecision(18, 2)
+                .HasColumnName("remaining_qty");
         });
 
         modelBuilder.Entity<Department>(entity =>

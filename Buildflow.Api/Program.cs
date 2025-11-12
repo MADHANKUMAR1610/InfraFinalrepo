@@ -94,6 +94,9 @@ builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
 builder.Services.AddScoped<IMaterialStatusRepository, MaterialStatusRepository>();
+builder.Services.AddHostedService<DailyStockBackgroundService>();
+builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
+builder.Services.AddScoped<DailyStockService>();
 
 builder.Services.AddScoped<MaterialService>();
 builder.Services.AddScoped<InventoryService>();
