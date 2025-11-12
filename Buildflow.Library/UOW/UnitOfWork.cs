@@ -1,75 +1,23 @@
-﻿//using Buildflow.Infrastructure.DatabaseContext;
-//using Buildflow.Library.Repository;
-//using Buildflow.Library.Repository.Interfaces;
-//using Microsoft.Extensions.Logging;
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using System.Threading.Tasks;
-
-//namespace Buildflow.Library.UOW
-//{
-//    public class UnitOfWork : IUnitOfWork
-//    {
-//        private readonly BuildflowAppContext _context;
-//        private readonly ILogger _logger;
-//        public IRegisterRepository Employees { get; private set; }
-//        public IRegisterRepository RegisterUser { get; private set; }
-
-//        public IProjectRepository Projects { get; private set; }
-
-//        public IProjectRepository ProjectTypes { get; private set; }
-//        public IProjectRepository ProjectSectors { get; private set; }
-//        public IProjectRepository ProjectBudgets { get; private set; }
-
-//        public UnitOfWork(BuildflowAppContext context, ILogger logger)
-//        {
-//            _context = context;
-
-//            _logger = logger;
-//            Employees = new RegisterRepository(_context);
-//            RegisterUser = new RegisterRepository(_context);
-//            Projects = new ProjectRepository(_context);
-//            ProjectTypes=new ProjectRepository(_context);
-//            ProjectSectors = new ProjectRepository(_context);
-//            ProjectBudgets = new ProjectRepository(_context);
-//        }
-
-//        public async Task<int> CompleteAsync()
-//        {
-//            return await _context.SaveChangesAsync();
-//        }
-
-//        public void Dispose()
-//        {
-//            _context.Dispose();
-//        }
-//    }
-//}
-
-
-using Buildflow.Infrastructure.DatabaseContext;
+﻿using Buildflow.Infrastructure.DatabaseContext;
 using Buildflow.Infrastructure.Entities;
 using Buildflow.Library.Repository;
 using Buildflow.Library.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace Buildflow.Library.UOW
 {
-    public class UnitOfWork : IUnitOfWork
+    public class UnitOfWork : IUnitOfWork, IDisposable
     {
         private readonly BuildflowAppContext _context;
         private readonly ILogger<UnitOfWork> _logger;
         private readonly IConfiguration _configuration;
-       
 
+        // Existing Repositories
         public IProjectRepository Boq { get; private set; }
-        public IReportRepository reportRepository { get; private set; }
-
-        
+        public IReportRepository ReportRepository { get; private set; }
         public INotificationRepository NotificationRepository { get; private set; }
         public IEmployeeRepository EmployeeRepository { get; private set; }
         public IProjectRepository ProjectTeam { get; private set; }
@@ -87,18 +35,22 @@ namespace Buildflow.Library.UOW
         public IProjectRepository ProjectSectors { get; private set; }
         public IProjectRepository ProjectBudgets { get; private set; }
         public IProjectRepository ProjectMilestone { get; private set; }
-
-        public ITicketRepository TicketRepository { get; }
+        public IProjectRepository ProjectMilestones { get; private set; }
         public IProjectRepository ProjectPermissionFinanceApprovals { get; private set; }
-
-        public IProjectRepository ProjectMilestones {  get; private set; }
+        public ITicketRepository TicketRepository { get; private set; }
         public IInventoryRepository InventoryRepository { get; private set; }
         public IMaterialRepository MaterialRepository { get; private set; }
 
+        // ✅ New ones
+        public IMaterialStockAlertRepository MaterialStockAlertRepository { get; private set; }
+
+        public IReportRepository reportRepository => throw new NotImplementedException();
         public IMaterialStatusRepository MaterialStatusRepository { get; private set; }
          public IDailyStockRepository DailyStockRepository { get; private set; }
 
+        public IMaterialStatusRepository MaterialStatusRepository => throw new NotImplementedException();
 
+        IMaterialStockAlertRepository IUnitOfWork.MaterialStockAlertRepository => throw new NotImplementedException();
 
         public UnitOfWork(
             BuildflowAppContext context,
@@ -109,51 +61,62 @@ namespace Buildflow.Library.UOW
             ILogger<GenericRepository<Notification>> notificationLogger,
             ILogger<GenericRepository<EmployeeDetail>> employeeLogger,
             ILogger<GenericRepository<Report>> reportLogger,
+            ILogger<GenericRepository<Ticket>> ticketLogger,
+            ILogger<GenericRepository<Vendor>> vendorLogger,
+            ILogger<GenericRepository<StockInward>> inventoryLogger,
            ILogger<GenericRepository<Ticket>> ticketLogger,
            ILogger<GenericRepository<Vendor>> vendorLogger,
            ILogger<GenericRepository<StockInward>> inventoryLogger,
             ILogger<GenericRepository<DailyStock>> DailystocklLogger,
 
             IRoleRepository roles,
-            IDepartmentRepository depts
-
+            IDepartmentRepository departments
         )
         {
             _context = context;
             _logger = logger;
             _configuration = configuration;
-            TicketRepository = new TicketRepository(_configuration, _context, ticketLogger);
-            EmployeeRepository = new EmployeeRepository(_configuration, _context, employeeLogger);
-            reportRepository = new ReportRepository(_configuration, _context, reportLogger);
-            Boq = new ProjectRepository(_configuration, _context, projectLogger);
+
+            // --- Existing Repository Initializations ---
+            TicketRepository = new TicketRepository(configuration, context, ticketLogger);
+            EmployeeRepository = new EmployeeRepository(configuration, context, employeeLogger);
+            ReportRepository = new ReportRepository(configuration, context, reportLogger);
+            Boq = new ProjectRepository(configuration, context, projectLogger);
             Roles = roles;
-            Vendors = new VendorRepository(_configuration, _context, vendorLogger);
-            DepartmentRepository = depts;
-            VendorDetails = new RegisterRepository(_configuration,_context, registerLogger);
-            SubcontractorDetails = new RegisterRepository(_configuration,_context, registerLogger);
-            Employees = new RegisterRepository(_configuration,_context, registerLogger);
-            RegisterUser = new RegisterRepository(_configuration,_context, registerLogger);
-            EmployeeRoles = new RegisterRepository(_configuration, _context, registerLogger);
-            LoginEmployee = new RegisterRepository(_configuration, _context, registerLogger);
-            Projects = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectTypes = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectSectors = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectBudgets = new ProjectRepository(_configuration, _context, projectLogger);
+            Vendors = new VendorRepository(configuration, context, vendorLogger);
+            DepartmentRepository = departments;
 
-            ProjectMilestone = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectMilestone = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectTeam = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectPermissionFinanceApprovals = new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectMilestones=new ProjectRepository(_configuration, _context, projectLogger);
-            ProjectMilestone = new ProjectRepository(_configuration, _context, projectLogger);
+            Employees = new RegisterRepository(configuration, context, registerLogger);
+            RegisterUser = new RegisterRepository(configuration, context, registerLogger);
+            EmployeeRoles = new RegisterRepository(configuration, context, registerLogger);
+            LoginEmployee = new RegisterRepository(configuration, context, registerLogger);
+            VendorDetails = new RegisterRepository(configuration, context, registerLogger);
+            SubcontractorDetails = new RegisterRepository(configuration, context, registerLogger);
+
+            Projects = new ProjectRepository(configuration, context, projectLogger);
+            ProjectTypes = new ProjectRepository(configuration, context, projectLogger);
+            ProjectSectors = new ProjectRepository(configuration, context, projectLogger);
+            ProjectBudgets = new ProjectRepository(configuration, context, projectLogger);
+            ProjectTeam = new ProjectRepository(configuration, context, projectLogger);
+            ProjectPermissionFinanceApprovals = new ProjectRepository(configuration, context, projectLogger);
+            ProjectMilestone = new ProjectRepository(configuration, context, projectLogger);
+            ProjectMilestones = new ProjectRepository(configuration, context, projectLogger);
+
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
-
+            InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger);
+            MaterialRepository = new MaterialRepository(configuration, context, new LoggerFactory().CreateLogger<MaterialRepository>());
             InventoryRepository = new InventoryRepository(_configuration, _context, inventoryLogger);
             MaterialRepository = new MaterialRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialRepository>());  
 
             MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>());
             DailyStockRepository = new DailyStockRepository(_configuration, _context, DailystocklLogger);
 
+            // ✅ Register new MaterialStockAlert repository
+            MaterialStockAlertRepository = new MaterialStockAlertRepository(
+                configuration,
+                context,
+                new LoggerFactory().CreateLogger<MaterialStockAlertRepository>()
+            );
         }
 
         public async Task<int> CompleteAsync()

@@ -75,6 +75,8 @@ namespace Buildflow.Library.Repository
                     VendorName = vendorName,
                     ReceivedById = inward.ReceivedbyId,
                     ReceivedByName = receivedByName,
+                    QuantityReceived = inward.QuantityReceived,
+                    DateReceived = inward.DateReceived,
                     Unit = inward.Unit,
                     Status = inward.Status,
                     Remarks = inward.Remarks,

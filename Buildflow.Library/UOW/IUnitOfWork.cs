@@ -1,4 +1,5 @@
-﻿using Buildflow.Library.Repository.Interfaces;
+﻿using Buildflow.Library.Repository;
+using Buildflow.Library.Repository.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,6 +37,7 @@ namespace Buildflow.Library.UOW
         IInventoryRepository InventoryRepository { get; }
         IMaterialRepository MaterialRepository { get; }
         IMaterialStatusRepository MaterialStatusRepository { get; }
+        IMaterialStockAlertRepository MaterialStockAlertRepository { get; }
         IDailyStockRepository DailyStockRepository { get; }
         Task<int> CompleteAsync();
     }
