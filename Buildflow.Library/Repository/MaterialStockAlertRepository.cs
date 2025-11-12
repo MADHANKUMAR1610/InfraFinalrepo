@@ -1,5 +1,6 @@
 ﻿using Buildflow.Infrastructure.Constants;
 using Buildflow.Infrastructure.DatabaseContext;
+using Buildflow.Infrastructure.Entities;
 using Buildflow.Library.Repository.Interfaces;
 using Buildflow.Utility.DTO;
 using Microsoft.EntityFrameworkCore;
@@ -32,13 +33,43 @@ namespace Buildflow.Library.Repository
         {
             try
             {
-                // 1) BOQ items for project
-                var boqItems = await _context.BoqItems
-                    .Include(b => b.Boq)
-                    .Where(b => b.Boq != null && b.Boq.ProjectId == projectId)
+                var today = DateTime.UtcNow.Date;
+                var yesterday = today.AddDays(-1);
+
+                // 1️⃣ Get today's DailyStock
+                var todayStock = await _context.DailyStocks
+                    .Where(x => x.Date.Date == today)
                     .ToListAsync();
 
-                // 2) Stock inward grouped
+                // 2️⃣ If not exists, carry forward from yesterday + hardcoded
+                if (!todayStock.Any())
+                {
+                    var yesterdayStock = await _context.DailyStocks
+                        .Where(x => x.Date.Date == yesterday)
+                        .ToListAsync();
+
+                    var newStock = new List<DailyStock>();
+
+                    foreach (var kvp in DailyStockRequirement.RequiredStock)
+                    {
+                        var previous = yesterdayStock.FirstOrDefault(x => x.ItemName == kvp.Key);
+                        decimal carryForward = previous?.RemainingQty ?? 0;
+                        newStock.Add(new DailyStock
+                        {
+                            ItemName = kvp.Key,
+                            DefaultQty = kvp.Value,
+                            RemainingQty = kvp.Value + carryForward, // 2000 + yesterday’s leftover
+                            Date = today
+                        });
+                    }
+
+                    await _context.DailyStocks.AddRangeAsync(newStock);
+                    await _context.SaveChangesAsync();
+
+                    todayStock = newStock;
+                }
+
+                // 3️⃣ Inward and Outward grouped data
                 var inwardData = await _context.StockInwards
                     .Where(x => x.ProjectId == projectId)
                     .GroupBy(x => new { x.Itemname, x.Unit })
@@ -50,7 +81,6 @@ namespace Buildflow.Library.Repository
                     })
                     .ToListAsync();
 
-                // 3) Stock outward grouped
                 var outwardData = await _context.StockOutwards
                     .Where(x => x.ProjectId == projectId)
                     .GroupBy(x => new { x.ItemName, x.Unit })
@@ -65,70 +95,34 @@ namespace Buildflow.Library.Repository
                 var result = new List<MaterialDto>();
                 int serial = 1;
 
-                // 4) Process BOQ items
-                foreach (var boqItem in boqItems)
+                // 4️⃣ Process each item (BoQ + Hardcoded)
+                foreach (var required in DailyStockRequirement.RequiredStock)
                 {
-                    // Lookup hardcoded required (case-insensitive)
-                    var match = DailyStockRequirement.RequiredStock
-                        .FirstOrDefault(x =>
-                            x.Key.Equals(boqItem.ItemName ?? "", StringComparison.OrdinalIgnoreCase));
+                    var itemName = required.Key;
+                    var requiredPerDay = required.Value;
 
-                    decimal hardcodedRequired = match.Value;
-                    if (hardcodedRequired == 0)
-                        continue; // skip items not in the hardcoded list
-
-                    var inward = inwardData.FirstOrDefault(i => i.ItemName.Equals(boqItem.ItemName, StringComparison.OrdinalIgnoreCase));
-                    var outward = outwardData.FirstOrDefault(o => o.ItemName.Equals(boqItem.ItemName, StringComparison.OrdinalIgnoreCase));
+                    var inward = inwardData.FirstOrDefault(i => i.ItemName == itemName);
+                    var outward = outwardData.FirstOrDefault(o => o.ItemName == itemName);
+                    var stock = todayStock.FirstOrDefault(s => s.ItemName == itemName);
 
                     decimal inwardQty = inward?.Quantity ?? 0;
                     decimal outwardQty = outward?.Quantity ?? 0;
 
-                    // In-stock = inward - outward
+                    // ✅ InStock = Total Inward - Total Outward
                     decimal inStockQty = inwardQty - outwardQty;
                     if (inStockQty < 0) inStockQty = 0;
 
-                    // Required quantity as you requested: hardcoded - outward
-                    decimal requiredQty = hardcodedRequired - outwardQty;
+                    // ✅ Today's Required = (Hardcoded + PreviousBalance) - Outward
+                    decimal todayRequired = stock?.RemainingQty ?? requiredPerDay;
+                    decimal requiredQty = todayRequired - outwardQty;
                     if (requiredQty < 0) requiredQty = 0;
 
-                    // URGENT condition: InStock <= Required / 3 (1:3)
-                    bool isUrgent = (requiredQty > 0) && (inStockQty <= requiredQty / 3m);
-                    if (!isUrgent)
-                        continue; // skip non-urgent
+                    // ✅ Update today's RemainingQty (carry-forward balance)
+                    stock.RemainingQty = requiredQty;
+                    _context.DailyStocks.Update(stock);
 
-                    string unit = boqItem.Unit ?? inward?.Unit ?? outward?.Unit ?? "Units";
-
-                    result.Add(new MaterialDto
-                    {
-                        SNo = serial++,
-                        MaterialList = boqItem.ItemName ?? "Unknown",
-                        InStockQuantity = $"{inStockQty:N2} {unit}",
-                        RequiredQuantity = $"{requiredQty:N2} {unit}",
-                        Level = "Urgent",
-                        RequestStatus = "Pending"
-                    });
-                }
-
-                // 5) Include hardcoded-only items (not in BOQ)
-                foreach (var hardcoded in DailyStockRequirement.RequiredStock)
-                {
-                    // if already added (case-insensitive), skip
-                    if (result.Any(r => r.MaterialList.Equals(hardcoded.Key, StringComparison.OrdinalIgnoreCase)))
-                        continue;
-
-                    var inward = inwardData.FirstOrDefault(i => i.ItemName.Equals(hardcoded.Key, StringComparison.OrdinalIgnoreCase));
-                    var outward = outwardData.FirstOrDefault(o => o.ItemName.Equals(hardcoded.Key, StringComparison.OrdinalIgnoreCase));
-
-                    decimal inwardQty = inward?.Quantity ?? 0;
-                    decimal outwardQty = outward?.Quantity ?? 0;
-
-                    decimal inStockQty = inwardQty - outwardQty;
-                    if (inStockQty < 0) inStockQty = 0;
-
-                    decimal requiredQty = hardcoded.Value - outwardQty;
-                    if (requiredQty < 0) requiredQty = 0;
-
-                    bool isUrgent = (requiredQty > 0) && (inStockQty <= requiredQty / 3m);
+                    // ✅ Check Urgent (1:3 ratio)
+                    bool isUrgent = requiredQty > 0 && inStockQty <= (requiredQty / 3m);
                     if (!isUrgent)
                         continue;
 
@@ -137,7 +131,7 @@ namespace Buildflow.Library.Repository
                     result.Add(new MaterialDto
                     {
                         SNo = serial++,
-                        MaterialList = hardcoded.Key,
+                        MaterialList = itemName,
                         InStockQuantity = $"{inStockQty:N2} {unit}",
                         RequiredQuantity = $"{requiredQty:N2} {unit}",
                         Level = "Urgent",
@@ -145,6 +139,7 @@ namespace Buildflow.Library.Repository
                     });
                 }
 
+                await _context.SaveChangesAsync();
                 return result;
             }
             catch (Exception ex)

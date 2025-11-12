@@ -5,6 +5,7 @@ using Buildflow.Library.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System;
 using System.Threading.Tasks;
 
 namespace Buildflow.Library.UOW
@@ -17,7 +18,7 @@ namespace Buildflow.Library.UOW
 
         // Existing Repositories
         public IProjectRepository Boq { get; private set; }
-        public IReportRepository ReportRepository { get; private set; }
+        public IReportRepository reportRepository { get; private set; }
         public INotificationRepository NotificationRepository { get; private set; }
         public IEmployeeRepository EmployeeRepository { get; private set; }
         public IProjectRepository ProjectTeam { get; private set; }
@@ -43,14 +44,8 @@ namespace Buildflow.Library.UOW
 
         // ✅ New ones
         public IMaterialStockAlertRepository MaterialStockAlertRepository { get; private set; }
-
-        public IReportRepository reportRepository => throw new NotImplementedException();
         public IMaterialStatusRepository MaterialStatusRepository { get; private set; }
-         public IDailyStockRepository DailyStockRepository { get; private set; }
-
-        public IMaterialStatusRepository MaterialStatusRepository => throw new NotImplementedException();
-
-        IMaterialStockAlertRepository IUnitOfWork.MaterialStockAlertRepository => throw new NotImplementedException();
+        public IDailyStockRepository DailyStockRepository { get; private set; }
 
         public UnitOfWork(
             BuildflowAppContext context,
@@ -64,11 +59,7 @@ namespace Buildflow.Library.UOW
             ILogger<GenericRepository<Ticket>> ticketLogger,
             ILogger<GenericRepository<Vendor>> vendorLogger,
             ILogger<GenericRepository<StockInward>> inventoryLogger,
-           ILogger<GenericRepository<Ticket>> ticketLogger,
-           ILogger<GenericRepository<Vendor>> vendorLogger,
-           ILogger<GenericRepository<StockInward>> inventoryLogger,
-            ILogger<GenericRepository<DailyStock>> DailystocklLogger,
-
+            ILogger<GenericRepository<DailyStock>> dailyStockLogger,
             IRoleRepository roles,
             IDepartmentRepository departments
         )
@@ -80,7 +71,7 @@ namespace Buildflow.Library.UOW
             // --- Existing Repository Initializations ---
             TicketRepository = new TicketRepository(configuration, context, ticketLogger);
             EmployeeRepository = new EmployeeRepository(configuration, context, employeeLogger);
-            ReportRepository = new ReportRepository(configuration, context, reportLogger);
+            reportRepository = new ReportRepository(configuration, context, reportLogger);
             Boq = new ProjectRepository(configuration, context, projectLogger);
             Roles = roles;
             Vendors = new VendorRepository(configuration, context, vendorLogger);
@@ -104,12 +95,24 @@ namespace Buildflow.Library.UOW
 
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
             InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger);
-            MaterialRepository = new MaterialRepository(configuration, context, new LoggerFactory().CreateLogger<MaterialRepository>());
-            InventoryRepository = new InventoryRepository(_configuration, _context, inventoryLogger);
-            MaterialRepository = new MaterialRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialRepository>());  
 
+            // ✅ Corrected DailyStockRepository initialization
+            DailyStockRepository = new DailyStockRepository(
+                _configuration,
+                _context,
+                new LoggerFactory().CreateLogger<DailyStockRepository>()
+            );
+
+            // ✅ MaterialRepository depends on DailyStockRepository
+            MaterialRepository = new MaterialRepository(
+                _configuration,
+                _context,
+                new LoggerFactory().CreateLogger<MaterialRepository>(),
+                DailyStockRepository
+            );
+
+            // ✅ Other repositories
             MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>());
-            DailyStockRepository = new DailyStockRepository(_configuration, _context, DailystocklLogger);
 
             // ✅ Register new MaterialStockAlert repository
             MaterialStockAlertRepository = new MaterialStockAlertRepository(

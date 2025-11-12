@@ -9,50 +9,70 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Buildflow.Library.Repository
 {
-
-
     public class MaterialRepository : IMaterialRepository
     {
         private readonly BuildflowAppContext _context;
         private readonly ILogger<MaterialRepository> _logger;
         private readonly IConfiguration _config;
-        private IConfiguration configuration;
+        private readonly IDailyStockRepository _dailyStockRepository;
 
-        public MaterialRepository(IConfiguration configuration, BuildflowAppContext context, ILogger<MaterialRepository> logger)
+        public MaterialRepository(
+            IConfiguration configuration,
+            BuildflowAppContext context,
+            ILogger<MaterialRepository> logger,
+            IDailyStockRepository dailyStockRepository)
         {
-            this.configuration = configuration;
+            _config = configuration;
             _context = context;
             _logger = logger;
+            _dailyStockRepository = dailyStockRepository;
         }
 
         public async Task<List<MaterialDto>> GetMaterialAsync(int projectId)
         {
             try
             {
-                //  Step 1: Get all BoQ items for the project
-                var boqItems = await _context.BoqItems
-                    .Include(b => b.Boq)
-                    .Where(b => b.Boq != null && b.Boq.ProjectId == projectId)
+                var today = DateTime.UtcNow.Date;
+
+                // 🧩 Step 1: Get existing DailyStock for today
+                var todayStock = await _context.DailyStocks
+                    .Where(x => x.Date.Date == today)
                     .ToListAsync();
 
-                //  Step 2: Get approvals for the same project
-                var approvals = await _context.BoqApprovals
-                    .Include(a => a.Boq)
-                    .Where(a => a.Boq != null && a.Boq.ProjectId == projectId)
-                    .Select(a => new
+                // 🧩 Step 2: If today’s stock doesn’t exist, carry forward yesterday’s
+                if (!todayStock.Any())
+                {
+                    var yesterday = today.AddDays(-1);
+                    var yesterdayStock = await _context.DailyStocks
+                        .Where(x => x.Date.Date == yesterday)
+                        .ToListAsync();
+
+                    var newStock = new List<DailyStock>();
+
+                    foreach (var kvp in DailyStockRequirement.RequiredStock)
                     {
-                        a.BoqId,
-                        a.Boq.BoqItems,
-                        a.ApprovalStatus
-                    })
-                    .ToListAsync();
+                        var previous = yesterdayStock.FirstOrDefault(x => x.ItemName == kvp.Key);
+                        decimal carryForward = previous?.RemainingQty ?? 0;
+                        newStock.Add(new DailyStock
+                        {
+                            ItemName = kvp.Key,
+                            DefaultQty = kvp.Value,
+                            RemainingQty = kvp.Value + carryForward, // 2000 + yesterday's leftover
+                            Date = today
+                        });
+                    }
 
-                //  Step 3: StockInward grouped by item
+                    await _context.DailyStocks.AddRangeAsync(newStock);
+                    await _context.SaveChangesAsync();
+
+                    todayStock = newStock;
+                }
+
+                // 🧩 Step 3: Get Inward and Outward data
                 var inwardData = await _context.StockInwards
                     .Where(x => x.ProjectId == projectId)
                     .GroupBy(x => new { x.Itemname, x.Unit })
@@ -64,7 +84,6 @@ namespace Buildflow.Library.Repository
                     })
                     .ToListAsync();
 
-                // Step 4: StockOutward grouped by item
                 var outwardData = await _context.StockOutwards
                     .Where(x => x.ProjectId == projectId)
                     .GroupBy(x => new { x.ItemName, x.Unit })
@@ -79,87 +98,56 @@ namespace Buildflow.Library.Repository
                 var result = new List<MaterialDto>();
                 int serial = 1;
 
-                // 🧩 Step 5: Combine all
-                foreach (var boqItem in boqItems)
+                // 🧩 Step 4: Combine logic for each material
+                foreach (var required in DailyStockRequirement.RequiredStock)
                 {
-                    var inward = inwardData.FirstOrDefault(i => i.ItemName == boqItem.ItemName);
-                    var outward = outwardData.FirstOrDefault(o => o.ItemName == boqItem.ItemName);
-                    var approval = approvals.FirstOrDefault(a => a.BoqItems.Any(b => b.ItemName == boqItem.ItemName));
+                    var itemName = required.Key;
+                    var requiredPerDay = required.Value;
+
+                    var inward = inwardData.FirstOrDefault(i => i.ItemName == itemName);
+                    var outward = outwardData.FirstOrDefault(o => o.ItemName == itemName);
+                    var stock = todayStock.FirstOrDefault(s => s.ItemName == itemName);
 
                     decimal inwardQty = inward?.Quantity ?? 0;
                     decimal outwardQty = outward?.Quantity ?? 0;
+
+                    // ✅ InStock = Total Inward - Total Outward
                     decimal inStockQty = inwardQty - outwardQty;
                     if (inStockQty < 0) inStockQty = 0;
 
-                    // Required quantity from hardcoded requirement (if available)
-                    DailyStockRequirement.RequiredStock.TryGetValue(boqItem.ItemName ?? "", out decimal requiredStock);
-                    decimal requiredQty = requiredStock > 0 ? requiredStock - outwardQty : boqItem.Quantity ?? 0;
-                    if (requiredQty < 0) requiredQty = 0;
+                    // ✅ Daily Requirement Logic (what you need today)
+                    // If you required 2000/day and only used 500 today → 1500 carried forward
+                    decimal todayRequired = stock?.RemainingQty ?? requiredPerDay;
+                    decimal balanceToday = todayRequired - outwardQty;
+                    if (balanceToday < 0) balanceToday = 0;
 
-                    string unit = boqItem.Unit ?? inward?.Unit ?? outward?.Unit ?? "Units";
+                    // ✅ Update DailyStock.RemainingQty for this item
+                    stock.RemainingQty = balanceToday;
+                    _context.DailyStocks.Update(stock);
 
-                    // Level logic
+                    // ✅ Level Calculation (same as before)
                     string level =
-                        (inStockQty <= requiredQty * 0.3m) ? "Urgent" :
-                        (inStockQty <= requiredQty * 0.6m) ? "High" :
-                        (inStockQty <= requiredQty * 0.9m) ? "Medium" : "Low";
-
-                    // Request Status
-                    string requestStatus = approval?.ApprovalStatus ?? "Pending";
+                        (inStockQty <= requiredPerDay / 3) ? "Urgent" :
+                        (inStockQty <= requiredPerDay * 0.6m) ? "High" :
+                        (inStockQty <= requiredPerDay * 0.9m) ? "Medium" : "Low";
 
                     result.Add(new MaterialDto
                     {
                         SNo = serial++,
-                        MaterialList = boqItem.ItemName ?? "Unknown",
-                        InStockQuantity = $"{inStockQty} {unit}",
-                        RequiredQuantity = $"{requiredQty} {unit}",
+                        MaterialList = itemName,
+                        InStockQuantity = $"{inStockQty} {(inward?.Unit ?? outward?.Unit ?? "Units")}",
+                        RequiredQuantity = $"{balanceToday} {(inward?.Unit ?? outward?.Unit ?? "Units")}",
                         Level = level,
-                        RequestStatus = requestStatus,
-
+                        RequestStatus = "Pending"
                     });
                 }
 
-                // Also include any items only in the hardcoded list (not in BoQ)
-                foreach (var hardcoded in DailyStockRequirement.RequiredStock)
-                {
-                    if (!result.Any(r => r.MaterialList == hardcoded.Key))
-                    {
-                        var inward = inwardData.FirstOrDefault(i => i.ItemName == hardcoded.Key);
-                        var outward = outwardData.FirstOrDefault(o => o.ItemName == hardcoded.Key);
-
-                        decimal inwardQty = inward?.Quantity ?? 0;
-                        decimal outwardQty = outward?.Quantity ?? 0;
-                        decimal inStockQty = inwardQty - outwardQty;
-                        if (inStockQty < 0) inStockQty = 0;
-
-                        decimal requiredQty = hardcoded.Value - outwardQty;
-                        if (requiredQty < 0) requiredQty = 0;
-
-                        string unit = inward?.Unit ?? outward?.Unit ?? "Units";
-
-                        string level =
-                            (inStockQty <= hardcoded.Value * 0.3m) ? "Urgent" :
-                            (inStockQty <= hardcoded.Value * 0.6m) ? "High" :
-                            (inStockQty <= hardcoded.Value * 0.9m) ? "Medium" : "Low";
-
-                        result.Add(new MaterialDto
-                        {
-                            SNo = serial++,
-                            MaterialList = hardcoded.Key,
-                            InStockQuantity = $"{inStockQty} {unit}",
-                            RequiredQuantity = $"{requiredQty} {unit}",
-                            Level = level,
-                            RequestStatus = "Pending",
-
-                        });
-                    }
-                }
-
+                await _context.SaveChangesAsync();
                 return result;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in MaterialRepository.GetMaterialStatusAsync");
+                _logger.LogError(ex, "Error in MaterialRepository.GetMaterialAsync");
                 throw;
             }
         }
