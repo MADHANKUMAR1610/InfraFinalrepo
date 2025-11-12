@@ -13,13 +13,12 @@ using System.Threading.Tasks;
 
 namespace Buildflow.Library.Repository
 {
-    public class MaterialStatusRepository:IMaterialStatusRepository
+    public class MaterialStatusRepository : IMaterialStatusRepository
     {
-
         private readonly BuildflowAppContext _context;
         private readonly ILogger<MaterialStatusRepository> _logger;
         private readonly IConfiguration _config;
-        private IConfiguration configuration;
+        private readonly IConfiguration configuration;
 
         public MaterialStatusRepository(IConfiguration configuration, BuildflowAppContext context, ILogger<MaterialStatusRepository> logger)
         {
@@ -30,6 +29,7 @@ namespace Buildflow.Library.Repository
 
         public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
         {
+            // 🧾 Get total inward (received) quantity per item
             var inwardGroups = await _context.StockInwards
                 .Where(x => x.ProjectId == projectId)
                 .GroupBy(x => new { x.Itemname, x.Unit })
@@ -41,6 +41,7 @@ namespace Buildflow.Library.Repository
                 })
                 .ToListAsync();
 
+            // 🧾 Get total outward (issued) quantity per item
             var outwardGroups = await _context.StockOutwards
                 .Where(x => x.ProjectId == projectId)
                 .GroupBy(x => new { x.ItemName, x.Unit })
@@ -54,6 +55,7 @@ namespace Buildflow.Library.Repository
 
             var materials = new List<MaterialStatusDto>();
 
+            // 🧮 Loop through each required stock item
             foreach (var reqItem in DailyStockRequirement.RequiredStock)
             {
                 var inwardItem = inwardGroups.FirstOrDefault(x => x.ItemName == reqItem.Key);
@@ -63,8 +65,12 @@ namespace Buildflow.Library.Repository
                 decimal outwardQty = outwardItem?.Quantity ?? 0;
                 string unit = inwardItem?.Unit ?? outwardItem?.Unit ?? "";
 
+                // 📦 Current in-stock quantity
                 decimal inStock = inwardQty - outwardQty;
-                decimal requiredQty = Math.Max(reqItem.Value - inStock, 0);
+
+                // ✅ New Logic:
+                // RequiredToBuy = TodayRequirement - (OutwardQty + InStock)
+                decimal requiredQty = Math.Max(reqItem.Value - (outwardQty + inStock), 0);
 
                 materials.Add(new MaterialStatusDto
                 {

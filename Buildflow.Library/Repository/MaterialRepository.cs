@@ -115,7 +115,7 @@ namespace Buildflow.Library.Repository
                         RequiredQuantity = $"{requiredQty} {unit}",
                         Level = level,
                         RequestStatus = requestStatus,
-                     
+
                     });
                 }
 
@@ -150,7 +150,7 @@ namespace Buildflow.Library.Repository
                             RequiredQuantity = $"{requiredQty} {unit}",
                             Level = level,
                             RequestStatus = "Pending",
-                           
+
                         });
                     }
                 }
@@ -165,4 +165,3 @@ namespace Buildflow.Library.Repository
         }
     }
 }
-
