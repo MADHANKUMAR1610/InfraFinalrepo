@@ -19,12 +19,14 @@ namespace Buildflow.Library.Repository
         private readonly ILogger<DailyStockRepository> _logger;
         private readonly IConfiguration _configuration;
 
-        public DailyStockRepository(IConfiguration configuration, BuildflowAppContext context, ILogger<DailyStockRepository> logger)
+       
+
+        public DailyStockRepository(IConfiguration configuration, BuildflowAppContext context, ILogger<GenericRepository<DailyStock>> dailystocklLogger)
         {
             _configuration = configuration;
             _context = context;
-            _logger = logger;
         }
+
         public async Task ResetDailyStockAsync()
         {
             try

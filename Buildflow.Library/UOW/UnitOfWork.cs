@@ -96,6 +96,7 @@ namespace Buildflow.Library.UOW
         public IMaterialRepository MaterialRepository { get; private set; }
 
         public IMaterialStatusRepository MaterialStatusRepository { get; private set; }
+         public IDailyStockRepository DailyStockRepository { get; private set; }
 
 
 
@@ -110,8 +111,9 @@ namespace Buildflow.Library.UOW
             ILogger<GenericRepository<Report>> reportLogger,
            ILogger<GenericRepository<Ticket>> ticketLogger,
            ILogger<GenericRepository<Vendor>> vendorLogger,
-           ILogger<GenericRepository<StockInward>> inventoryLogger
-,
+           ILogger<GenericRepository<StockInward>> inventoryLogger,
+            ILogger<GenericRepository<DailyStock>> DailystocklLogger,
+
             IRoleRepository roles,
             IDepartmentRepository depts
 
@@ -150,7 +152,7 @@ namespace Buildflow.Library.UOW
             MaterialRepository = new MaterialRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialRepository>());  
 
             MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>());
-
+            DailyStockRepository = new DailyStockRepository(_configuration, _context, DailystocklLogger);
 
         }
 

@@ -34,13 +34,13 @@ namespace Buildflow.Library.Repository
         {
             try
             {
-                // 🧩 Step 1: Get all BoQ items for the project
+                //  Step 1: Get all BoQ items for the project
                 var boqItems = await _context.BoqItems
                     .Include(b => b.Boq)
                     .Where(b => b.Boq != null && b.Boq.ProjectId == projectId)
                     .ToListAsync();
 
-                // 🧩 Step 2: Get approvals for the same project
+                //  Step 2: Get approvals for the same project
                 var approvals = await _context.BoqApprovals
                     .Include(a => a.Boq)
                     .Where(a => a.Boq != null && a.Boq.ProjectId == projectId)
@@ -52,7 +52,7 @@ namespace Buildflow.Library.Repository
                     })
                     .ToListAsync();
 
-                // 🧩 Step 3: StockInward grouped by item
+                //  Step 3: StockInward grouped by item
                 var inwardData = await _context.StockInwards
                     .Where(x => x.ProjectId == projectId)
                     .GroupBy(x => new { x.Itemname, x.Unit })
@@ -64,7 +64,7 @@ namespace Buildflow.Library.Repository
                     })
                     .ToListAsync();
 
-                // 🧩 Step 4: StockOutward grouped by item
+                // Step 4: StockOutward grouped by item
                 var outwardData = await _context.StockOutwards
                     .Where(x => x.ProjectId == projectId)
                     .GroupBy(x => new { x.ItemName, x.Unit })
