@@ -25,6 +25,16 @@ namespace Buildflow.Service.Service.Inventory
         {
             return await _unitOfWork.InventoryRepository.CreateStockOutwardAsync(dto);
         }
+        public async Task<IEnumerable<StockInwardDto>> GetStockInwardsByProjectIdAsync(int projectId)
+        {
+            return await _unitOfWork.InventoryRepository.GetStockInwardsByProjectIdAsync(projectId);
+        }
+
+        public async Task<IEnumerable<StockOutwardDto>> GetStockOutwardsByProjectIdAsync(int projectId)
+        {
+            return await _unitOfWork.InventoryRepository.GetStockOutwardsByProjectIdAsync(projectId);
+        }
+
 
     }
 }

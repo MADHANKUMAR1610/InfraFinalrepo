@@ -54,6 +54,7 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockInwards.AddAsync(inward);
                 await _context.SaveChangesAsync();
+                await UpdateDailyStockAsync(inward.Itemname, inward.QuantityReceived ?? 0);
 
                 var vendorName = await _context.Vendors
                        .Where(e => e.VendorId == inward.VendorId)
@@ -112,8 +113,9 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockOutwards.AddAsync(outward);
                 await _context.SaveChangesAsync();
+                await UpdateDailyStockAsync(outward.ItemName, -(outward.IssuedQuantity ?? 0));
 
-                
+
                 var requestedByName = await _context.EmployeeDetails
                         .Where(e => e.EmpId == outward.RequestedById)
                         .Select(e => e.FirstName + " " + e.LastName)
@@ -146,6 +148,145 @@ namespace Buildflow.Library.Repository
                 _logger.LogError(ex, "Error creating Stock outward entry: {Inner}", ex.InnerException?.Message ?? ex.Message);
                 throw new ApplicationException($"Error while creating Stock outward entry: {ex.InnerException?.Message ?? ex.Message}", ex);
             }
+        }
+        // ---------------------- GET STOCK INWARD BY PROJECT ID ---------------------- //
+        public async Task<IEnumerable<StockInwardDto>> GetStockInwardsByProjectIdAsync(int projectId)
+        {
+            try
+            {
+                var inwards = await _context.StockInwards
+                    .Where(i => i.ProjectId == projectId)
+                    .ToListAsync();
+
+                var result = new List<StockInwardDto>();
+
+                foreach (var inward in inwards)
+                {
+                    var vendorName = await _context.Vendors
+                        .Where(v => v.VendorId == inward.VendorId)
+                        .Select(v => v.VendorName)
+                        .FirstOrDefaultAsync();
+
+                    var receivedByName = await _context.EmployeeDetails
+                        .Where(e => e.EmpId == inward.ReceivedbyId)
+                        .Select(e => e.FirstName + " " + e.LastName)
+                        .FirstOrDefaultAsync();
+
+                    result.Add(new StockInwardDto
+                    {
+                        StockinwardId = inward.StockinwardId,
+                        ProjectId = inward.ProjectId,
+                        Grn = inward.Grn,
+                        Itemname = inward.Itemname,
+                        VendorId = inward.VendorId,
+                        VendorName = vendorName,
+                        QuantityReceived = inward.QuantityReceived,
+                        Unit = inward.Unit,
+                        DateReceived = inward.DateReceived,
+                        ReceivedById = inward.ReceivedbyId,
+                        ReceivedByName = receivedByName,
+                        Status = inward.Status,
+                        Remarks = inward.Remarks
+                    });
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching Stock Inwards: {Inner}", ex.InnerException?.Message ?? ex.Message);
+                throw new ApplicationException($"Error fetching Stock Inwards: {ex.InnerException?.Message ?? ex.Message}", ex);
+            }
+        }
+
+
+        // ---------------------- GET STOCK OUTWARD BY PROJECT ID ---------------------- //
+        public async Task<IEnumerable<StockOutwardDto>> GetStockOutwardsByProjectIdAsync(int projectId)
+        {
+            try
+            {
+                var outwards = await _context.StockOutwards
+                    .Where(o => o.ProjectId == projectId)
+                    .ToListAsync();
+
+                var result = new List<StockOutwardDto>();
+
+                foreach (var outward in outwards)
+                {
+                    var requestedByName = await _context.EmployeeDetails
+                        .Where(e => e.EmpId == outward.RequestedById)
+                        .Select(e => e.FirstName + " " + e.LastName)
+                        .FirstOrDefaultAsync();
+
+                    var issuedToName = await _context.EmployeeDetails
+                        .Where(e => e.EmpId == outward.IssuedToId)
+                        .Select(e => e.FirstName + " " + e.LastName)
+                        .FirstOrDefaultAsync();
+
+                    result.Add(new StockOutwardDto
+                    {
+                        StockOutwardId = outward.StockOutwardId,
+                        ProjectId = outward.ProjectId,
+                        IssueNo = outward.IssueNo,
+                        ItemName = outward.ItemName,
+                        RequestedById = outward.RequestedById,
+                        RequestedByName = requestedByName,
+                        IssuedQuantity = outward.IssuedQuantity,
+                        Unit = outward.Unit,
+                        IssuedToId = outward.IssuedToId,
+                        IssuedToName = issuedToName,
+                        DateIssued = outward.DateIssued,
+                        Status = outward.Status,
+                        Remarks = outward.Remarks
+                    });
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching Stock Outwards: {Inner}", ex.InnerException?.Message ?? ex.Message);
+                throw new ApplicationException($"Error fetching Stock Outwards: {ex.InnerException?.Message ?? ex.Message}", ex);
+            }
+        }
+        // ✅ Updates or creates daily stock whenever stock moves
+        private async Task UpdateDailyStockAsync(string itemName, decimal qtyChange)
+        {
+            var today = DateTime.UtcNow.Date;
+            var yesterday = today.AddDays(-1);
+
+            // Get yesterday's stock if exists
+            var yesterdayStock = await _context.DailyStocks
+                .FirstOrDefaultAsync(d => d.ItemName == itemName && d.Date == yesterday);
+
+            // Get today's stock if already created
+            var todayStock = await _context.DailyStocks
+                .FirstOrDefaultAsync(d => d.ItemName == itemName && d.Date == today);
+
+            // Calculate carry forward quantity
+            decimal carryForward = yesterdayStock?.RemainingQty ?? 0;
+
+            if (todayStock == null)
+            {
+                // Create today's entry
+                todayStock = new DailyStock
+                {
+                    ItemName = itemName,
+                    DefaultQty = carryForward, // yesterday’s remaining as start
+                    RemainingQty = carryForward + qtyChange, // adjust with inward/outward
+                    Date = today
+                };
+                await _context.DailyStocks.AddAsync(todayStock);
+            }
+            else
+            {
+                // Update existing today’s stock
+                todayStock.RemainingQty += qtyChange;
+                if (todayStock.RemainingQty < 0)
+                    todayStock.RemainingQty = 0; // prevent negative stock
+            }
+
+            await _context.SaveChangesAsync();
         }
 
 

@@ -43,5 +43,26 @@ namespace Buildflow.Api.Controllers.Inventory
             var result = await _service.CreateStockOutwardAsync(input);
             return Ok(result);
         }
+        [HttpGet("get-stock-inwards/{projectId}")]
+        public async Task<ActionResult<IEnumerable<StockInwardDto>>> GetStockInwardsByProjectId(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest("Invalid ProjectId.");
+
+            var result = await _service.GetStockInwardsByProjectIdAsync(projectId);
+            return Ok(result);
+        }
+
+        [HttpGet("get-stock-outwards/{projectId}")]
+        public async Task<ActionResult<IEnumerable<StockOutwardDto>>> GetStockOutwardsByProjectId(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest("Invalid ProjectId.");
+
+            var result = await _service.GetStockOutwardsByProjectIdAsync(projectId);
+            return Ok(result);
+        }
+
+
     }
 }

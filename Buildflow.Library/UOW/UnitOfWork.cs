@@ -113,15 +113,9 @@ namespace Buildflow.Library.UOW
 
             // ✅ Other repositories
             MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>());
-
-            // ✅ Register new MaterialStockAlert repository
-            MaterialStockAlertRepository = new MaterialStockAlertRepository(
-                configuration,
-                context,
-                new LoggerFactory().CreateLogger<MaterialStockAlertRepository>()
-            );
+            MaterialStockAlertRepository = new MaterialStockAlertRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(), MaterialRepository);
+        
         }
-
         public async Task<int> CompleteAsync()
         {
             return await _context.SaveChangesAsync();

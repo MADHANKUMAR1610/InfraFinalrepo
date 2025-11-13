@@ -12,5 +12,9 @@ namespace Buildflow.Library.Repository.Interfaces
         Task<StockInwardDto> CreateStockInwardAsync(StockInwardDto dto);
         Task<StockOutwardDto> CreateStockOutwardAsync(StockOutwardDto dto);
 
+        Task<IEnumerable<StockInwardDto>> GetStockInwardsByProjectIdAsync(int projectId);
+        Task<IEnumerable<StockOutwardDto>> GetStockOutwardsByProjectIdAsync(int projectId);
+
+
     }
 }

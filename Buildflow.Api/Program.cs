@@ -95,7 +95,7 @@ builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
 builder.Services.AddScoped<IMaterialStatusRepository, MaterialStatusRepository>();
-builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
+
 builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
 builder.Services.AddScoped<DailyStockService>();
 builder.Services.AddScoped<DailyStockBackgroundService>();
@@ -111,7 +111,10 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<VendorService>();
 builder.Services.AddScoped<MaterialStatusService>();
-builder.Services.AddScoped<MaterialStockAlertService>();    
+builder.Services.AddScoped<MaterialStockAlertService>();
+builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
+builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization();
 builder.Services.AddControllers(options =>
