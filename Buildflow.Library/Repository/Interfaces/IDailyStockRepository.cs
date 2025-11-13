@@ -8,6 +8,6 @@ namespace Buildflow.Library.Repository.Interfaces
 {
     public interface IDailyStockRepository
     {
-        Task ResetDailyStockAsync();
+        Task ResetDailyStockAsync(int projectId);
     }
 }

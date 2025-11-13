@@ -293,9 +293,15 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.ItemName)
                 .HasMaxLength(255)
                 .HasColumnName("item_name");
+            entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.RemainingQty)
                 .HasPrecision(18, 2)
                 .HasColumnName("remaining_qty");
+
+            entity.HasOne(d => d.Project).WithMany(p => p.DailyStocks)
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("fk_daily_stock_project");
         });
 
         modelBuilder.Entity<Department>(entity =>

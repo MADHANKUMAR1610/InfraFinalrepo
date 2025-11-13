@@ -1,8 +1,5 @@
 ﻿using Buildflow.Library.Repository.Interfaces;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Buildflow.Service.Service.Inventory
@@ -13,12 +10,20 @@ namespace Buildflow.Service.Service.Inventory
 
         public DailyStockService(IDailyStockRepository dailyStockRepository)
         {
-            _dailyStockRepository = dailyStockRepository;
+            _dailyStockRepository = dailyStockRepository ?? throw new ArgumentNullException(nameof(dailyStockRepository));
         }
 
-        public async Task ResetDailyStockAsync()
+        /// <summary>
+        /// Resets the daily stock for a specific project.
+        /// Carries forward yesterday's remaining quantity and adds today's planned (hardcoded) requirement.
+        /// </summary>
+        /// <param name="projectId">The ID of the project to reset daily stock for.</param>
+        public async Task ResetDailyStockAsync(int projectId)
         {
-            await _dailyStockRepository.ResetDailyStockAsync();
+            if (projectId <= 0)
+                throw new ArgumentException("Invalid project ID provided.", nameof(projectId));
+
+            await _dailyStockRepository.ResetDailyStockAsync(projectId);
         }
     }
 }

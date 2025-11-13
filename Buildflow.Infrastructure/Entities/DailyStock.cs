@@ -14,4 +14,8 @@ public partial class DailyStock
     public decimal RemainingQty { get; set; }
 
     public DateTime Date { get; set; }
+
+    public int? ProjectId { get; set; }
+
+    public virtual Project? Project { get; set; }
 }

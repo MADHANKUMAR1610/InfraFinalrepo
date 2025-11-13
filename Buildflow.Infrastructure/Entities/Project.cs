@@ -45,6 +45,8 @@ public partial class Project
 
     public virtual ICollection<Boq> Boqs { get; set; } = new List<Boq>();
 
+    public virtual ICollection<DailyStock> DailyStocks { get; set; } = new List<DailyStock>();
+
     public virtual ICollection<ProjectApproval> ProjectApprovals { get; set; } = new List<ProjectApproval>();
 
     public virtual ICollection<ProjectBudgetDetail> ProjectBudgetDetails { get; set; } = new List<ProjectBudgetDetail>();

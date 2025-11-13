@@ -8,7 +8,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Buildflow.Library.Repository
@@ -18,7 +17,6 @@ namespace Buildflow.Library.Repository
         private readonly BuildflowAppContext _context;
         private readonly ILogger<DailyStockRepository> _logger;
         private readonly IConfiguration _configuration;
-
 
         public DailyStockRepository(
             IConfiguration configuration,
@@ -30,58 +28,65 @@ namespace Buildflow.Library.Repository
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-
-        public async Task ResetDailyStockAsync()
+        /// <summary>
+        /// Resets or initializes daily stock per project
+        /// </summary>
+        public async Task ResetDailyStockAsync(int projectId)
         {
             try
             {
                 var today = DateTime.UtcNow.Date;
                 var yesterday = today.AddDays(-1);
 
-                bool alreadyExists = await _context.DailyStocks.AnyAsync(d => d.Date.Date == today);
+                bool alreadyExists = await _context.DailyStocks
+                    .AnyAsync(d => d.ProjectId == projectId && d.Date.Date == today);
+
                 if (alreadyExists)
                 {
-                    _logger.LogInformation("Daily stock for today already exists. Skipping reset.");
+                    _logger.LogInformation($"Daily stock for project {projectId} already exists. Skipping reset.");
                     return;
                 }
 
                 var yesterdayStock = await _context.DailyStocks
-                    .Where(d => d.Date.Date == yesterday)
+                    .Where(d => d.ProjectId == projectId && d.Date.Date == yesterday)
                     .ToListAsync();
 
                 var newStock = new List<DailyStock>();
 
                 if (yesterdayStock.Any())
                 {
-                    // Carry forward balance from yesterday
                     foreach (var item in yesterdayStock)
                     {
+                        decimal todayHardcoded = DailyStockRequirement.RequiredStock[item.ItemName];
+                        decimal carryForward = item.RemainingQty; // yesterday’s balance requirement
+
                         newStock.Add(new DailyStock
                         {
+                            ProjectId = projectId,
                             ItemName = item.ItemName,
-                            DefaultQty = item.DefaultQty,
-                            RemainingQty = item.RemainingQty + item.DefaultQty,
-                            Date = DateTime.UtcNow
+                            DefaultQty = todayHardcoded, // today’s planned requirement
+                            RemainingQty = carryForward + todayHardcoded, // add yesterday’s pending to today’s
+                            Date = today
                         });
                     }
 
-                    _logger.LogInformation("Daily stock reset successful (carried forward yesterday’s balance).");
+                    _logger.LogInformation($"Carried forward yesterday’s balance for project {projectId}.");
                 }
                 else
                 {
-                    // First day: insert default hardcoded stock
                     foreach (var kvp in DailyStockRequirement.RequiredStock)
                     {
                         newStock.Add(new DailyStock
                         {
+                            ProjectId = projectId,
                             ItemName = kvp.Key,
                             DefaultQty = kvp.Value,
-                            RemainingQty = kvp.Value,
-                            Date = DateTime.UtcNow
+                            RemainingQty = kvp.Value, // first day = full required amount
+                            Date = today
                         });
                     }
 
-                    _logger.LogInformation("Initial daily stock inserted using hardcoded defaults.");
+                    _logger.LogInformation($"Initialized first-day stock for project {projectId}.");
                 }
 
                 await _context.DailyStocks.AddRangeAsync(newStock);
@@ -89,11 +94,10 @@ namespace Buildflow.Library.Repository
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while resetting daily stock: {Message}", ex.Message);
-                throw new ApplicationException("Error while resetting daily stock", ex);
+                _logger.LogError(ex, "Error resetting daily stock for project {ProjectId}", projectId);
+                throw;
             }
         }
+
     }
 }
-
-    
