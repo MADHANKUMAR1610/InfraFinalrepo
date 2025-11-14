@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Buildflow.Service.Service.Inventory;
 using Buildflow.Infrastructure.DatabaseContext;
+using Microsoft.EntityFrameworkCore;
 
 namespace Buildflow.Service.Service.Inventory
 {
@@ -33,13 +34,10 @@ namespace Buildflow.Service.Service.Inventory
                         var dailyStockService = scope.ServiceProvider.GetRequiredService<DailyStockService>();
 
                         // Fetch all active projects
-                        var activeProjects = await Task.Run(() =>
-                            context.Projects
-                                .Where(p => p.IsActive == true)
-
-                                .Select(p => p.ProjectId)
-                                .ToList()
-                        );
+                        var activeProjects = await context.Projects
+                          .Where(p => p.IsActive.GetValueOrDefault())
+                          .Select(p => p.ProjectId)
+                           .ToListAsync(stoppingToken);
 
                         if (!activeProjects.Any())
                         {
@@ -63,7 +61,7 @@ namespace Buildflow.Service.Service.Inventory
                     }
 
                     // Wait until next midnight (12:00:05 AM)
-                    var now = DateTime.Now;
+                    var now = DateTime.UtcNow;
                     var nextRun = DateTime.Today.AddDays(1).AddSeconds(5);
                     var delay = nextRun - now;
 

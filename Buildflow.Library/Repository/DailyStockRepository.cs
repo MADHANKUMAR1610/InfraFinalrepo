@@ -105,41 +105,53 @@ namespace Buildflow.Library.Repository
         /// Update remaining quantity whenever new outward is created
         /// Only RemainingQty is updated
         /// </summary>
-        public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty)
+        public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0)
         {
-            try
+            var today = DateTime.UtcNow.Date;
+            var yesterday = today.AddDays(-1);
+
+            // Get yesterday's remaining
+            var yesterdayStock = await _context.DailyStocks
+                .Where(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == yesterday)
+                .FirstOrDefaultAsync();
+
+            decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
+
+            // Today hardcoded
+            decimal todayHardcoded = DailyStockRequirement.RequiredStock.ContainsKey(itemName)
+                ? DailyStockRequirement.RequiredStock[itemName]
+                : 0;
+
+            // Calculate today's remaining (do not consider in-stock)
+            decimal todayRemaining = yesterdayRemaining + todayHardcoded - outwardQty;
+            if (todayRemaining < 0) todayRemaining = 0;
+
+            // Update or create today's DailyStock
+            var todayStock = await _context.DailyStocks
+                .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == today);
+
+            if (todayStock == null)
             {
-                var today = DateTime.UtcNow.Date;
-
-                var todayStock = await _context.DailyStocks
-                    .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date.Date == today);
-
-                if (todayStock == null)
+                todayStock = new DailyStock
                 {
-                    _logger.LogWarning($"Daily stock not found for {itemName} on project {projectId}. Resetting daily stock first.");
-                    await ResetDailyStockAsync(projectId);
-                    todayStock = await _context.DailyStocks
-                        .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date.Date == today);
-                }
-
-                if (todayStock != null)
-                {
-                    todayStock.RemainingQty -= outwardQty;
-                    if (todayStock.RemainingQty < 0)
-                        todayStock.RemainingQty = 0;
-
-                    _context.DailyStocks.Update(todayStock);
-                    await _context.SaveChangesAsync();
-
-                    _logger.LogInformation($"Updated RemainingQty for {itemName} on project {projectId}. Outward={outwardQty}, RemainingQty={todayStock.RemainingQty}");
-                }
+                    ProjectId = projectId,
+                    ItemName = itemName,
+                    DefaultQty = todayHardcoded,
+                    RemainingQty = todayRemaining,
+                    Date = today
+                };
+                await _context.DailyStocks.AddAsync(todayStock);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error updating daily stock for project {ProjectId}, item {ItemName}", projectId, itemName);
-                throw;
+                todayStock.RemainingQty = todayRemaining;
+                todayStock.DefaultQty = todayHardcoded;
+                _context.DailyStocks.Update(todayStock);
             }
+
+            await _context.SaveChangesAsync();
         }
+
 
         /// <summary>
         /// Get current daily stock for a project
