@@ -288,6 +288,46 @@ namespace Buildflow.Library.Repository
 
             await _context.SaveChangesAsync();
         }
+        public async Task<IEnumerable<object>> GetProjectTeamMembersAsync(int projectId)
+        {
+            // 1️⃣ Get the project team record
+            var projectTeam = await _context.ProjectTeams
+                .FirstOrDefaultAsync(pt => pt.ProjectId == projectId);
+
+            if (projectTeam == null)
+                return Enumerable.Empty<object>();
+
+            // 2️⃣ Combine all employee ID lists
+            var allEmployeeIds = new List<int>();
+
+            if (projectTeam.PmId != null) allEmployeeIds.AddRange(projectTeam.PmId);
+            if (projectTeam.ApmId != null) allEmployeeIds.AddRange(projectTeam.ApmId);
+            if (projectTeam.LeadEnggId != null) allEmployeeIds.AddRange(projectTeam.LeadEnggId);
+            if (projectTeam.SiteSupervisorId != null) allEmployeeIds.AddRange(projectTeam.SiteSupervisorId);
+            if (projectTeam.QsId != null) allEmployeeIds.AddRange(projectTeam.QsId);
+            if (projectTeam.AqsId != null) allEmployeeIds.AddRange(projectTeam.AqsId);
+            if (projectTeam.SiteEnggId != null) allEmployeeIds.AddRange(projectTeam.SiteEnggId);
+            if (projectTeam.EnggId != null) allEmployeeIds.AddRange(projectTeam.EnggId);
+            if (projectTeam.DesignerId != null) allEmployeeIds.AddRange(projectTeam.DesignerId);
+            if (projectTeam.VendorId != null) allEmployeeIds.AddRange(projectTeam.VendorId);
+            if (projectTeam.SubcontractorId != null) allEmployeeIds.AddRange(projectTeam.SubcontractorId);
+
+            // 3️⃣ Remove duplicates
+            allEmployeeIds = allEmployeeIds.Distinct().ToList();
+
+            // 4️⃣ Return ID + Name only
+            var employees = await _context.EmployeeDetails
+                .Where(e => allEmployeeIds.Contains(e.EmpId))
+                .Select(e => new
+                {
+                    EmpId = e.EmpId,
+                    FullName = e.FirstName +
+                        (string.IsNullOrEmpty(e.LastName) ? "" : " " + e.LastName)
+                })
+                .ToListAsync();
+
+            return employees;
+        }
 
 
     }

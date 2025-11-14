@@ -1,4 +1,5 @@
-﻿using Buildflow.Utility.DTO;
+﻿using Buildflow.Infrastructure.Entities;
+using Buildflow.Utility.DTO;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,7 @@ namespace Buildflow.Library.Repository.Interfaces
 
         Task<IEnumerable<StockInwardDto>> GetStockInwardsByProjectIdAsync(int projectId);
         Task<IEnumerable<StockOutwardDto>> GetStockOutwardsByProjectIdAsync(int projectId);
+        Task<IEnumerable<object>> GetProjectTeamMembersAsync(int projectId);
 
 
     }

@@ -34,6 +34,10 @@ namespace Buildflow.Service.Service.Inventory
         {
             return await _unitOfWork.InventoryRepository.GetStockOutwardsByProjectIdAsync(projectId);
         }
+        public async Task<IEnumerable<object>> GetProjectTeamMembersAsync(int projectId)
+        {
+            return await _unitOfWork.InventoryRepository.GetProjectTeamMembersAsync(projectId);
+        }
 
 
     }

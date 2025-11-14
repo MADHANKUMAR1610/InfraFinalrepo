@@ -62,6 +62,12 @@ namespace Buildflow.Api.Controllers.Inventory
             var result = await _service.GetStockOutwardsByProjectIdAsync(projectId);
             return Ok(result);
         }
+        [HttpGet("project-team/{projectId}")]
+        public async Task<IActionResult> GetProjectTeamMembers(int projectId)
+        {
+            var members = await _service.GetProjectTeamMembersAsync(projectId);
+            return Ok(members);
+        }
 
 
     }
