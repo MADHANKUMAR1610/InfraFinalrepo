@@ -54,7 +54,7 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockInwards.AddAsync(inward);
                 await _context.SaveChangesAsync();
-                await UpdateDailyStockAsync(inward.Itemname, inward.QuantityReceived ?? 0);
+              
 
                 var vendorName = await _context.Vendors
                        .Where(e => e.VendorId == inward.VendorId)
@@ -113,7 +113,7 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockOutwards.AddAsync(outward);
                 await _context.SaveChangesAsync();
-                await UpdateDailyStockAsync(outward.ItemName, -(outward.IssuedQuantity ?? 0));
+            
 
 
                 var requestedByName = await _context.EmployeeDetails
@@ -249,45 +249,7 @@ namespace Buildflow.Library.Repository
                 throw new ApplicationException($"Error fetching Stock Outwards: {ex.InnerException?.Message ?? ex.Message}", ex);
             }
         }
-        // ✅ Updates or creates daily stock whenever stock moves
-        private async Task UpdateDailyStockAsync(string itemName, decimal qtyChange)
-        {
-            var today = DateTime.UtcNow.Date;
-            var yesterday = today.AddDays(-1);
-
-            // Get yesterday's stock if exists
-            var yesterdayStock = await _context.DailyStocks
-                .FirstOrDefaultAsync(d => d.ItemName == itemName && d.Date == yesterday);
-
-            // Get today's stock if already created
-            var todayStock = await _context.DailyStocks
-                .FirstOrDefaultAsync(d => d.ItemName == itemName && d.Date == today);
-
-            // Calculate carry forward quantity
-            decimal carryForward = yesterdayStock?.RemainingQty ?? 0;
-
-            if (todayStock == null)
-            {
-                // Create today's entry
-                todayStock = new DailyStock
-                {
-                    ItemName = itemName,
-                    DefaultQty = carryForward, // yesterday’s remaining as start
-                    RemainingQty = carryForward + qtyChange, // adjust with inward/outward
-                    Date = today
-                };
-                await _context.DailyStocks.AddAsync(todayStock);
-            }
-            else
-            {
-                // Update existing today’s stock
-                todayStock.RemainingQty += qtyChange;
-                if (todayStock.RemainingQty < 0)
-                    todayStock.RemainingQty = 0; // prevent negative stock
-            }
-
-            await _context.SaveChangesAsync();
-        }
+     
         public async Task<IEnumerable<object>> GetProjectTeamMembersAsync(int projectId)
         {
             // 1️⃣ Get the project team record

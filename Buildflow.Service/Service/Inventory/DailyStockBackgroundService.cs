@@ -61,8 +61,9 @@ namespace Buildflow.Service.Service.Inventory
                     }
 
                     // Wait until next midnight (12:00:05 AM)
-                    var now = DateTime.UtcNow;
-                    var nextRun = DateTime.Today.AddDays(1).AddSeconds(5);
+                    var now = DateTime.Now;
+                    var nextRun = DateTime.Now.Date.AddDays(1).AddSeconds(5);
+
                     var delay = nextRun - now;
 
                     if (delay < TimeSpan.Zero)
