@@ -42,7 +42,9 @@ namespace Buildflow.Api.Controllers.Material
             int projectId = projects.First().ProjectId;
 
             // 4️⃣ Call existing material logic
-            var result = await _materialService.GetMaterialAsync(projectId);
+           
+            var result = await _materialService.TriggerRecalculationIfNeededAsync(projectId);
+
 
             return Ok(result);
         }

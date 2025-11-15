@@ -9,8 +9,9 @@ namespace Buildflow.Library.Repository.Interfaces
 {
     public interface IMaterialRepository
     {
-
+        Task<List<MaterialDto>> TriggerRecalculationIfNeededAsync(int projectId);
         Task<List<MaterialDto>> GetMaterialAsync(int projectId);
+
 
     }
 }

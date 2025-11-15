@@ -47,19 +47,23 @@ namespace Buildflow.Library.Repository
 
                 // ------------------ Fetch inward/outward ------------------
                 decimal yesterdayInward = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.DateReceived.Value.Date == yesterday)
+                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.DateReceived.HasValue &&
+                            x.DateReceived.Value.ToUniversalTime().Date == yesterday)
                     .SumAsync(x => (decimal?)x.QuantityReceived) ?? 0;
 
                 decimal yesterdayOutward = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName && x.DateIssued.Value.Date == yesterday)
+                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName && x.DateIssued.HasValue &&
+                            x.DateIssued.Value.ToUniversalTime().Date == yesterday)
                     .SumAsync(x => (decimal?)x.IssuedQuantity) ?? 0;
 
                 decimal todayInward = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.DateReceived.Value.Date == today)
+                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.DateReceived.HasValue &&
+                            x.DateReceived.Value.ToUniversalTime().Date == today)
                     .SumAsync(x => (decimal?)x.QuantityReceived) ?? 0;
 
                 decimal todayOutward = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName && x.DateIssued.Value.Date == today)
+                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName && x.DateIssued.HasValue &&
+                            x.DateIssued.Value.ToUniversalTime().Date == today)
                     .SumAsync(x => (decimal?)x.IssuedQuantity) ?? 0;
 
                 // ------------------ Yesterday's Remaining ------------------
@@ -129,17 +133,20 @@ namespace Buildflow.Library.Repository
         }
 
         // ✅ Recalculate only when new stock movement or new day starts
-        public async Task TriggerRecalculationIfNeededAsync(int projectId)
+        public async Task<List<MaterialDto>> TriggerRecalculationIfNeededAsync(int projectId)
         {
             var today = DateTime.UtcNow.Date;
-            bool inwardExists = await _context.StockInwards.AnyAsync(x => x.ProjectId == projectId && x.DateReceived.Value.Date == today);
-            bool outwardExists = await _context.StockOutwards.AnyAsync(x => x.ProjectId == projectId && x.DateIssued.Value.Date == today);
+            bool inwardExists = await _context.StockInwards.AnyAsync(x => x.ProjectId == projectId && x.DateReceived.HasValue &&
+                           x.DateReceived.Value.ToUniversalTime().Date == today);
+            bool outwardExists = await _context.StockOutwards.AnyAsync(x => x.ProjectId == projectId && x.DateIssued.HasValue &&
+                           x.DateIssued.Value.ToUniversalTime().Date == today);
             bool todayStockExists = await _context.DailyStocks.AnyAsync(x => x.ProjectId == projectId && x.Date == today);
 
             if (!todayStockExists || inwardExists || outwardExists)
             {
                 await GetMaterialAsync(projectId);
             }
+            return await GetMaterialAsync(projectId);
         }
     }
 }

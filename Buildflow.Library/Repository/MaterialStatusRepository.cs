@@ -78,14 +78,14 @@ namespace Buildflow.Library.Repository
                 .Where(x => x.ProjectId == projectId &&
                             x.Itemname == itemName &&
                             x.DateReceived.HasValue &&
-                            x.DateReceived.Value.Date == yesterday)
+                            x.DateReceived.Value.ToUniversalTime().Date == yesterday)
                 .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
 
             decimal yesterdayOutward = await _context.StockOutwards
                 .Where(x => x.ProjectId == projectId &&
                             x.ItemName == itemName &&
                             x.DateIssued.HasValue &&
-                            x.DateIssued.Value.Date == yesterday)
+                            x.DateIssued.Value.ToUniversalTime().Date == yesterday)
                 .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
 
             decimal yesterdayInStock = yesterdayInward - yesterdayOutward;
@@ -101,14 +101,14 @@ namespace Buildflow.Library.Repository
                 .Where(x => x.ProjectId == projectId &&
                             x.Itemname == itemName &&
                             x.DateReceived.HasValue &&
-                            x.DateReceived.Value.Date == today)
+                            x.DateReceived.Value.ToUniversalTime().Date == today)
                 .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
 
             decimal todayOutward = await _context.StockOutwards
                 .Where(x => x.ProjectId == projectId &&
                             x.ItemName == itemName &&
                             x.DateIssued.HasValue &&
-                            x.DateIssued.Value.Date == today)
+                            x.DateIssued.Value.ToUniversalTime().Date == today)
                 .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
 
             // ------------------------ CALCULATIONS ------------------------
@@ -154,10 +154,10 @@ namespace Buildflow.Library.Repository
             var today = DateTime.UtcNow.Date;
 
             bool inwardExists = await _context.StockInwards
-                .AnyAsync(x => x.ProjectId == projectId && x.DateReceived.Value.Date == today);
+                .AnyAsync(x => x.ProjectId == projectId && x.DateReceived.Value.ToUniversalTime().Date == today);
 
             bool outwardExists = await _context.StockOutwards
-                .AnyAsync(x => x.ProjectId == projectId && x.DateIssued.Value.Date == today);
+                .AnyAsync(x => x.ProjectId == projectId && x.DateIssued.Value.ToUniversalTime().Date == today);
 
             if (!inwardExists && !outwardExists)
             {

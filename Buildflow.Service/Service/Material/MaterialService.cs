@@ -18,10 +18,15 @@ namespace Buildflow.Service.Service.Material
             _materialRepository = materialRepository;
         }
 
+        public async Task<List<MaterialDto>> TriggerRecalculationIfNeededAsync(int projectId)
+        {
+            return await _materialRepository.TriggerRecalculationIfNeededAsync(projectId);
+        }
         public async Task<List<MaterialDto>> GetMaterialAsync(int projectId)
         {
             return await _materialRepository.GetMaterialAsync(projectId);
         }
+
     }
 
 }
