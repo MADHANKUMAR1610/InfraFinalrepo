@@ -16,18 +16,24 @@ namespace Buildflow.Library.Repository
     public class MaterialStatusRepository : IMaterialStatusRepository
     {
         private readonly BuildflowAppContext _context;
+        private readonly IDailyStockRepository _dailyStockRepository;
+
         private readonly ILogger<MaterialStatusRepository> _logger;
         private readonly IConfiguration _configuration;
 
         public MaterialStatusRepository(
             IConfiguration configuration,
             BuildflowAppContext context,
-            ILogger<MaterialStatusRepository> logger)
+            ILogger<MaterialStatusRepository> logger,
+             IDailyStockRepository dailyStockRepository)
         {
             _configuration = configuration;
             _context = context;
             _logger = logger;
+            _dailyStockRepository = dailyStockRepository;
         }
+
+      
 
         // ✅ Get material status for display (calculates dynamically, no DB writes)
         public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
@@ -35,19 +41,25 @@ namespace Buildflow.Library.Repository
             try
             {
                 var today = DateTime.UtcNow.Date;
-                var yesterday = today.AddDays(-1);
+
 
                 // Get all items linked to this project from inward & outward
-                var allItems = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId)
-                    .Select(x => x.Itemname)
-                    .Union(
-                        _context.StockOutwards
-                        .Where(x => x.ProjectId == projectId)
-                        .Select(x => x.ItemName)
-                    )
+                var dbItems = await _context.StockInwards
+                  .Where(x => x.ProjectId == projectId)
+                  .Select(x => x.Itemname)
+                  .Union(
+                      _context.StockOutwards
+                      .Where(x => x.ProjectId == projectId)
+                      .Select(x => x.ItemName)
+                  )
+                  .Distinct()
+                  .ToListAsync();
+
+                var allItems = DailyStockRequirement.RequiredStock.Keys
+                    .Union(dbItems)   // combine both hardcoded + dynamic
                     .Distinct()
-                    .ToListAsync();
+                    .ToList();
+
 
                 var materials = new List<MaterialStatusDto>();
 
@@ -74,35 +86,24 @@ namespace Buildflow.Library.Repository
             var yesterday = today.AddDays(-1);
 
             // ------------------------ YESTERDAY ------------------------
-            decimal yesterdayInward = await _context.StockInwards
-                .Where(x => x.ProjectId == projectId &&
-                            x.Itemname == itemName &&
-                            x.DateReceived.HasValue &&
-                            x.DateReceived.Value.ToUniversalTime().Date == yesterday)
-                .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
-
-            decimal yesterdayOutward = await _context.StockOutwards
-                .Where(x => x.ProjectId == projectId &&
-                            x.ItemName == itemName &&
-                            x.DateIssued.HasValue &&
-                            x.DateIssued.Value.ToUniversalTime().Date == yesterday)
-                .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
-
-            decimal yesterdayInStock = yesterdayInward - yesterdayOutward;
-            if (yesterdayInStock < 0) yesterdayInStock = 0;
-
             var yesterdayStock = await _context.DailyStocks
-                .FirstOrDefaultAsync(d => d.ItemName == itemName && d.Date.Date == yesterday);
+                .FirstOrDefaultAsync(d =>
+                    d.ProjectId == projectId &&
+                    d.ItemName == itemName &&
+                    d.Date == yesterday);
 
-            decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0; // Already calculated: yesterday hardcoded - yesterday outward
+            decimal yesterdayInStock = yesterdayStock?.InStock ?? 0;       // physical
+            decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
+
+
 
             // ------------------------ TODAY ------------------------
             decimal todayInward = await _context.StockInwards
-                .Where(x => x.ProjectId == projectId &&
-                            x.Itemname == itemName &&
-                            x.DateReceived.HasValue &&
-                            x.DateReceived.Value.ToUniversalTime().Date == today)
-                .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+                  .Where(x => x.ProjectId == projectId &&
+                              x.Itemname == itemName &&
+                              x.DateReceived.HasValue &&
+                              x.DateReceived.Value.ToUniversalTime().Date == today)
+                  .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
 
             decimal todayOutward = await _context.StockOutwards
                 .Where(x => x.ProjectId == projectId &&
@@ -110,6 +111,7 @@ namespace Buildflow.Library.Repository
                             x.DateIssued.HasValue &&
                             x.DateIssued.Value.ToUniversalTime().Date == today)
                 .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+
 
             // ------------------------ CALCULATIONS ------------------------
             decimal todayInStock = yesterdayInStock + todayInward - todayOutward;
@@ -147,45 +149,36 @@ namespace Buildflow.Library.Repository
                 RequiredDisplay = $"{requiredQty:N2} {unit}"
             };
         }
-
-        // ✅ Trigger recalculation only if new inward or outward exists (or first call of day)
         public async Task<List<MaterialStatusDto>> TriggerRecalculationIfNeededAsync(int projectId)
         {
             var today = DateTime.UtcNow.Date;
 
             bool inwardExists = await _context.StockInwards
-                .AnyAsync(x => x.ProjectId == projectId && x.DateReceived.Value.ToUniversalTime().Date == today);
+                .AnyAsync(x => x.ProjectId == projectId &&
+                               x.DateReceived.Value.ToUniversalTime().Date == today);
 
             bool outwardExists = await _context.StockOutwards
-                .AnyAsync(x => x.ProjectId == projectId && x.DateIssued.Value.ToUniversalTime().Date == today);
+                .AnyAsync(x => x.ProjectId == projectId &&
+                               x.DateIssued.Value.ToUniversalTime().Date == today);
 
-            if (!inwardExists && !outwardExists)
-            {
-                // Nothing new today, just return calculated values from yesterday remaining
-                var items = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId)
-                    .Select(x => x.Itemname)
-                    .Union(
-                        _context.StockOutwards
-                        .Where(x => x.ProjectId == projectId)
-                        .Select(x => x.ItemName)
-                    )
-                    .Distinct()
-                    .ToListAsync();
+            bool todayStockExists = await _context.DailyStocks
+                .AnyAsync(x => x.ProjectId == projectId &&
+                               x.Date == today);
 
-                var materials = new List<MaterialStatusDto>();
-                foreach (var item in items)
-                {
-                    var dto = await CalculateMaterialStatusAsync(projectId, item);
-                    materials.Add(dto);
-                }
-                return materials;
-            }
-            else
+            // 👇 THIS IS THE FIX: ensure DailyStock updates
+            if (!todayStockExists)
             {
-                // New movement today, recalculate
-                return await GetMaterialStatusAsync(projectId);
+                await _dailyStockRepository.ResetDailyStockAsync(projectId);
             }
+            else if (inwardExists || outwardExists)
+            {
+                await _dailyStockRepository.UpdateDailyStockForProjectAsync(projectId);
+            }
+
+            // Always return MaterialStatus
+            return await GetMaterialStatusAsync(projectId);
         }
+
+
     }
 }

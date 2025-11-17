@@ -112,8 +112,12 @@ builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<VendorService>();
 builder.Services.AddScoped<MaterialStatusService>();
 builder.Services.AddScoped<MaterialStockAlertService>();
-builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
+
+
 builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
+
+
+
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization();

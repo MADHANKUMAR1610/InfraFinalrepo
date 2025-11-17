@@ -290,6 +290,10 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.DefaultQty)
                 .HasPrecision(18, 2)
                 .HasColumnName("default_qty");
+            entity.Property(e => e.InStock)
+                .HasPrecision(18, 2)
+                .HasDefaultValueSql("0")
+                .HasColumnName("inStock");
             entity.Property(e => e.ItemName)
                 .HasMaxLength(255)
                 .HasColumnName("item_name");

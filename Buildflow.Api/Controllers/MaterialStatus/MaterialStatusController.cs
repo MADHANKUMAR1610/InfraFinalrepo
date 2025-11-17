@@ -19,7 +19,7 @@ namespace Buildflow.Api.Controllers.MaterialStatus
         [HttpGet("{projectId}")]
         public async Task<IActionResult> GetMaterialStatus(int projectId)
         {
-            var result = await _materialStatusService.GetMaterialStatusAsync(projectId);
+            var result = await _materialStatusService.TriggerRecalculationIfNeededAsync(projectId); ;
             return Ok(result);
         }
     }

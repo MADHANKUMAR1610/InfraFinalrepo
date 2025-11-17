@@ -24,12 +24,12 @@ namespace Buildflow.Library.Repository
             IConfiguration configuration,
             BuildflowAppContext context,
             ILogger<MaterialRepository> logger,
-            IDailyStockRepository dailyStockRepository)  // add this
+            IDailyStockRepository dailyStockRepository)  
         {
             _config = configuration;
             _context = context;
             _logger = logger;
-            _dailyStockRepository = dailyStockRepository; // assign
+            _dailyStockRepository = dailyStockRepository; 
         }
 
         // ✅ Called from frontend or dashboard to get material details
@@ -45,16 +45,7 @@ namespace Buildflow.Library.Repository
                 string itemName = material.Key;
                 decimal todayHardcoded = material.Value;
 
-                // ------------------ Fetch inward/outward ------------------
-                decimal yesterdayInward = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.DateReceived.HasValue &&
-                            x.DateReceived.Value.ToUniversalTime().Date == yesterday)
-                    .SumAsync(x => (decimal?)x.QuantityReceived) ?? 0;
-
-                decimal yesterdayOutward = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName && x.DateIssued.HasValue &&
-                            x.DateIssued.Value.ToUniversalTime().Date == yesterday)
-                    .SumAsync(x => (decimal?)x.IssuedQuantity) ?? 0;
+               
 
                 decimal todayInward = await _context.StockInwards
                     .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.DateReceived.HasValue &&
@@ -70,10 +61,11 @@ namespace Buildflow.Library.Repository
                 var yesterdayStock = await _context.DailyStocks
                     .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == yesterday);
                 decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
+                decimal yesterdayInStock = yesterdayStock?.InStock ?? 0;
 
                 // ------------------ Calculate Logic ------------------
                 // ✅ InStock = (YesterdayInward - YesterdayOutward) + (TodayInward - TodayOutward)
-                decimal inStock = (yesterdayInward - yesterdayOutward) + (todayInward - todayOutward);
+                decimal inStock = yesterdayInStock + (todayInward - todayOutward);
                 if (inStock < 0) inStock = 0;
 
                 // ✅ RequiredQty = Yesterday’s Remaining + Today’s Hardcoded − Today’s Outward
@@ -115,7 +107,7 @@ namespace Buildflow.Library.Repository
                     ProjectId = projectId,
                     ItemName = itemName,
                     DefaultQty = defaultQty,
-                 
+                    InStock = inStock,
                     RemainingQty = requiredQty,
                     Date = today
                 };
@@ -125,7 +117,7 @@ namespace Buildflow.Library.Repository
             {
                 todayStock.DefaultQty = defaultQty;
                 todayStock.RemainingQty = requiredQty;
-                
+                todayStock.InStock = inStock;
                 _context.DailyStocks.Update(todayStock);
             }
 

@@ -92,7 +92,7 @@ namespace Buildflow.Library.UOW
             ProjectPermissionFinanceApprovals = new ProjectRepository(configuration, context, projectLogger);
             ProjectMilestone = new ProjectRepository(configuration, context, projectLogger);
             ProjectMilestones = new ProjectRepository(configuration, context, projectLogger);
-
+            
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
             InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger);
 
@@ -112,7 +112,7 @@ namespace Buildflow.Library.UOW
             );
 
             // ✅ Other repositories
-            MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>());
+            MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>(), DailyStockRepository);
             MaterialStockAlertRepository = new MaterialStockAlertRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(), MaterialRepository);
         
         }

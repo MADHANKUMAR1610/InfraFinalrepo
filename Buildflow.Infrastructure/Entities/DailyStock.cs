@@ -17,5 +17,7 @@ public partial class DailyStock
 
     public int? ProjectId { get; set; }
 
+    public decimal? InStock { get; set; }
+
     public virtual Project? Project { get; set; }
 }

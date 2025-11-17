@@ -17,16 +17,19 @@ namespace Buildflow.Library.Repository
         private readonly BuildflowAppContext _context;
         private readonly ILogger<DailyStockRepository> _logger;
         private readonly IConfiguration _configuration;
+       
 
         public DailyStockRepository(
             IConfiguration configuration,
             BuildflowAppContext context,
-            ILogger<DailyStockRepository> logger)
+            ILogger<DailyStockRepository> logger) 
         {
             _configuration = configuration;
             _context = context;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
+
+       
 
         /// <summary>
         /// Reset or initialize daily stock at start of the day
@@ -56,17 +59,18 @@ namespace Buildflow.Library.Repository
                 if (yesterdayStocks.Any())
                 {
                     // Day 2+: carry forward yesterday's remaining
-                    foreach (var item in yesterdayStocks)
+                    foreach (var yStock in yesterdayStocks)
                     {
-                        decimal todayHardcoded = DailyStockRequirement.RequiredStock[item.ItemName];
-                        decimal remainingQty = todayHardcoded + item.RemainingQty;
+                        decimal todayHardcoded = DailyStockRequirement.RequiredStock[yStock.ItemName];
+                        decimal newRemaining = yStock.RemainingQty + todayHardcoded;
 
                         newStocks.Add(new DailyStock
                         {
                             ProjectId = projectId,
-                            ItemName = item.ItemName,
+                            ItemName = yStock.ItemName,
                             DefaultQty = todayHardcoded,
-                            RemainingQty = remainingQty,
+                            RemainingQty = newRemaining,
+                            InStock = yStock.InStock,     
                             Date = today
                         });
                     }
@@ -84,6 +88,7 @@ namespace Buildflow.Library.Repository
                             ItemName = kvp.Key,
                             DefaultQty = kvp.Value,
                             RemainingQty = kvp.Value,
+                            InStock = 0,
                             Date = today
                         });
                     }
@@ -105,7 +110,7 @@ namespace Buildflow.Library.Repository
         /// Update remaining quantity whenever new outward is created
         /// Only RemainingQty is updated
         /// </summary>
-        public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0)
+        public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0, decimal inwardQty = 0)
         {
             var today = DateTime.UtcNow.Date;
             var yesterday = today.AddDays(-1);
@@ -116,6 +121,7 @@ namespace Buildflow.Library.Repository
                 .FirstOrDefaultAsync();
 
             decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
+            decimal yesterdayInStock = yesterdayStock?.InStock ?? 0;
 
             // Today hardcoded
             decimal todayHardcoded = DailyStockRequirement.RequiredStock.ContainsKey(itemName)
@@ -127,10 +133,14 @@ namespace Buildflow.Library.Repository
             if (todayRemaining < 0) todayRemaining = 0;
 
             // Update or create today's DailyStock
+            decimal todayInStock = yesterdayInStock + inwardQty - outwardQty;
+            if (todayInStock < 0) todayInStock = 0;
+
             var todayStock = await _context.DailyStocks
-                .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == today);
+       .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == today);
 
             if (todayStock == null)
+                
             {
                 todayStock = new DailyStock
                 {
@@ -138,6 +148,7 @@ namespace Buildflow.Library.Repository
                     ItemName = itemName,
                     DefaultQty = todayHardcoded,
                     RemainingQty = todayRemaining,
+                    InStock = todayInStock,
                     Date = today
                 };
                 await _context.DailyStocks.AddAsync(todayStock);
@@ -147,6 +158,7 @@ namespace Buildflow.Library.Repository
                 todayStock.RemainingQty = todayRemaining;
                 todayStock.DefaultQty = todayHardcoded;
                 _context.DailyStocks.Update(todayStock);
+                todayStock.InStock = todayInStock;
             }
 
             await _context.SaveChangesAsync();
@@ -173,5 +185,44 @@ namespace Buildflow.Library.Repository
 
             return result;
         }
+        public async Task UpdateDailyStockForProjectAsync(int projectId)
+        {
+            var today = DateTime.UtcNow.Date;
+
+            var items = await _context.StockInwards
+                .Where(x => x.ProjectId == projectId)
+                .Select(x => x.Itemname)
+                .Union(
+                    _context.StockOutwards
+                    .Where(x => x.ProjectId == projectId)
+                    .Select(x => x.ItemName)
+                )
+                .Distinct()
+                .ToListAsync();
+
+            foreach (var item in items)
+            {
+                decimal todayInward = await _context.StockInwards
+                    .Where(x => x.ProjectId == projectId &&
+                                x.Itemname == item &&
+                                x.DateReceived.Value.ToUniversalTime().Date == today)
+                    .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+
+                decimal todayOutward = await _context.StockOutwards
+                    .Where(x => x.ProjectId == projectId &&
+                                x.ItemName == item &&
+                                x.DateIssued.Value.ToUniversalTime().Date == today)
+                    .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+
+                await UpdateDailyStockAsync(
+                    projectId,
+                    item,
+                    outwardQty: todayOutward,
+                    inwardQty: todayInward
+                );
+            }
+        }
+
+
     }
 }

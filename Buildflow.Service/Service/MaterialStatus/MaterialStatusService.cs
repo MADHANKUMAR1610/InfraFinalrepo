@@ -21,5 +21,10 @@ namespace Buildflow.Service.Service.MaterialStatus
         {
             return await _materialStatusRepository.GetMaterialStatusAsync(projectId);
         }
+        public async Task<List<MaterialStatusDto>> TriggerRecalculationIfNeededAsync(int projectId)
+        {
+            return await _materialStatusRepository.TriggerRecalculationIfNeededAsync(projectId);
+        }
+
     }
 }

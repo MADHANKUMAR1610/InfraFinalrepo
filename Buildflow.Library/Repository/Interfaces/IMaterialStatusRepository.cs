@@ -11,5 +11,6 @@ namespace Buildflow.Library.Repository.Interfaces
     public interface IMaterialStatusRepository
     {
         Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId);
+        Task<List<MaterialStatusDto>> TriggerRecalculationIfNeededAsync(int projectId);
     }
 }
