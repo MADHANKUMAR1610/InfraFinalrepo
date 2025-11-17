@@ -42,7 +42,6 @@ namespace Buildflow.Library.UOW
         public IInventoryRepository InventoryRepository { get; private set; }
         public IMaterialRepository MaterialRepository { get; private set; }
 
-        // ✅ New ones
         public IMaterialStockAlertRepository MaterialStockAlertRepository { get; private set; }
         public IMaterialStatusRepository MaterialStatusRepository { get; private set; }
         public IDailyStockRepository DailyStockRepository { get; private set; }
@@ -96,14 +95,14 @@ namespace Buildflow.Library.UOW
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
             InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger);
 
-            // ✅ Corrected DailyStockRepository initialization
+            // Corrected DailyStockRepository initialization
             DailyStockRepository = new DailyStockRepository(
                 _configuration,
                 _context,
                 new LoggerFactory().CreateLogger<DailyStockRepository>()
             );
 
-            // ✅ MaterialRepository depends on DailyStockRepository
+            //  MaterialRepository depends on DailyStockRepository
             MaterialRepository = new MaterialRepository(
                 _configuration,
                 _context,
@@ -111,7 +110,7 @@ namespace Buildflow.Library.UOW
                 DailyStockRepository
             );
 
-            // ✅ Other repositories
+         
             MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>(), DailyStockRepository);
             MaterialStockAlertRepository = new MaterialStockAlertRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(), MaterialRepository);
         

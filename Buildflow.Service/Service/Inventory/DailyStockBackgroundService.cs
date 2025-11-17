@@ -60,7 +60,7 @@ namespace Buildflow.Service.Service.Inventory
                         }
                     }
 
-                    // Wait until next midnight (12:00:05 AM)
+                            // Wait until next midnight (12:00:05 AM)
                     var now = DateTime.Now;
                     var nextRun = DateTime.Now.Date.AddDays(1).AddSeconds(5);
 

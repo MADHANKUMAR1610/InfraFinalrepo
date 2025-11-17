@@ -13,11 +13,7 @@ namespace Buildflow.Service.Service.Inventory
             _dailyStockRepository = dailyStockRepository ?? throw new ArgumentNullException(nameof(dailyStockRepository));
         }
 
-        /// <summary>
-        /// Resets the daily stock for a specific project.
-        /// Carries forward yesterday's remaining quantity and adds today's planned (hardcoded) requirement.
-        /// </summary>
-        /// <param name="projectId">The ID of the project to reset daily stock for.</param>
+        //reset daily stock at start of the day
         public async Task ResetDailyStockAsync(int projectId)
         {
             if (projectId <= 0)

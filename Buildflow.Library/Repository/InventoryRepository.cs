@@ -33,7 +33,7 @@ namespace Buildflow.Library.Repository
         public IDbConnection CreateConnection() =>
             new NpgsqlConnection(_configuration.GetConnectionString("DefaultConnection"));
 
-        // ---------------------- CREATE STOCK INWARD ---------------------- //
+                        //CREATE STOCK INWARD
         public async Task<StockInwardDto> CreateStockInwardAsync(StockInwardDto dto)
         {
             try
@@ -91,7 +91,7 @@ namespace Buildflow.Library.Repository
         }
 
 
-        // ---------------------- CREATE STOCK OUTWARD ---------------------- //
+                               // CREATE STOCK OUTWARD  
         public async Task<StockOutwardDto> CreateStockOutwardAsync(StockOutwardDto dto)
         {
             try
@@ -149,7 +149,7 @@ namespace Buildflow.Library.Repository
                 throw new ApplicationException($"Error while creating Stock outward entry: {ex.InnerException?.Message ?? ex.Message}", ex);
             }
         }
-        // ---------------------- GET STOCK INWARD BY PROJECT ID ---------------------- //
+                         // GET STOCK INWARD BY PROJECT ID 
         public async Task<IEnumerable<StockInwardDto>> GetStockInwardsByProjectIdAsync(int projectId)
         {
             try
@@ -200,7 +200,7 @@ namespace Buildflow.Library.Repository
         }
 
 
-        // ---------------------- GET STOCK OUTWARD BY PROJECT ID ---------------------- //
+                            //  GET STOCK OUTWARD BY PROJECT ID 
         public async Task<IEnumerable<StockOutwardDto>> GetStockOutwardsByProjectIdAsync(int projectId)
         {
             try
@@ -252,14 +252,14 @@ namespace Buildflow.Library.Repository
      
         public async Task<IEnumerable<object>> GetProjectTeamMembersAsync(int projectId)
         {
-            // 1️⃣ Get the project team record
+                        //  Get the project team record
             var projectTeam = await _context.ProjectTeams
                 .FirstOrDefaultAsync(pt => pt.ProjectId == projectId);
 
             if (projectTeam == null)
                 return Enumerable.Empty<object>();
 
-            // 2️⃣ Combine all employee ID lists
+                       // 2 Combine all employee ID lists
             var allEmployeeIds = new List<int>();
 
             if (projectTeam.PmId != null) allEmployeeIds.AddRange(projectTeam.PmId);
@@ -274,10 +274,10 @@ namespace Buildflow.Library.Repository
             if (projectTeam.VendorId != null) allEmployeeIds.AddRange(projectTeam.VendorId);
             if (projectTeam.SubcontractorId != null) allEmployeeIds.AddRange(projectTeam.SubcontractorId);
 
-            // 3️⃣ Remove duplicates
+                           //  Remove duplicates
             allEmployeeIds = allEmployeeIds.Distinct().ToList();
 
-            // 4️⃣ Return ID + Name only
+                          //  Return ID + Name only
             var employees = await _context.EmployeeDetails
                 .Where(e => allEmployeeIds.Contains(e.EmpId))
                 .Select(e => new

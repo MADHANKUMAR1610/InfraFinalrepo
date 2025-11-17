@@ -35,7 +35,7 @@ namespace Buildflow.Library.Repository
 
       
 
-        // ✅ Get material status for display (calculates dynamically, no DB writes)
+        // Get material status for display (calculates dynamically, no DB writes)
         public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
         {
             try
@@ -79,13 +79,13 @@ namespace Buildflow.Library.Repository
             }
         }
 
-        // ✅ Calculate material status dynamically for a single item (no DB writes)
+        // Calculate material status dynamically for a single item (no DB writes)
         public async Task<MaterialStatusDto> CalculateMaterialStatusAsync(int projectId, string itemName)
         {
             var today = DateTime.UtcNow.Date;
             var yesterday = today.AddDays(-1);
 
-            // ------------------------ YESTERDAY ------------------------
+            // ................... YESTERDAY....................
             var yesterdayStock = await _context.DailyStocks
                 .FirstOrDefaultAsync(d =>
                     d.ProjectId == projectId &&
@@ -97,7 +97,7 @@ namespace Buildflow.Library.Repository
 
 
 
-            // ------------------------ TODAY ------------------------
+                                  //TODAY
             decimal todayInward = await _context.StockInwards
                   .Where(x => x.ProjectId == projectId &&
                               x.Itemname == itemName &&
@@ -113,7 +113,7 @@ namespace Buildflow.Library.Repository
                 .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
 
 
-            // ------------------------ CALCULATIONS ------------------------
+                                 // CALCULATIONS
             decimal todayInStock = yesterdayInStock + todayInward - todayOutward;
             if (todayInStock < 0) todayInStock = 0;
 
@@ -125,7 +125,7 @@ namespace Buildflow.Library.Repository
             decimal requiredQty = yesterdayRemaining + todayHardcoded - todayOutward - todayInStock;
             if (requiredQty < 0) requiredQty = 0;
 
-            // ------------------------ DETECT UNIT ------------------------
+            
             string unit = await _context.StockInwards
                 .Where(x => x.Itemname == itemName && !string.IsNullOrEmpty(x.Unit))
                 .Select(x => x.Unit)
@@ -141,7 +141,6 @@ namespace Buildflow.Library.Repository
 
             if (string.IsNullOrEmpty(unit)) unit = "Units";
 
-            // ------------------------ RETURN DTO ------------------------
             return new MaterialStatusDto
             {
                 ItemName = itemName,
@@ -165,7 +164,7 @@ namespace Buildflow.Library.Repository
                 .AnyAsync(x => x.ProjectId == projectId &&
                                x.Date == today);
 
-            // 👇 THIS IS THE FIX: ensure DailyStock updates
+           //ensure DailyStock updates
             if (!todayStockExists)
             {
                 await _dailyStockRepository.ResetDailyStockAsync(projectId);
@@ -175,7 +174,7 @@ namespace Buildflow.Library.Repository
                 await _dailyStockRepository.UpdateDailyStockForProjectAsync(projectId);
             }
 
-            // Always return MaterialStatus
+            
             return await GetMaterialStatusAsync(projectId);
         }
 

@@ -32,7 +32,7 @@ namespace Buildflow.Library.Repository
             _dailyStockRepository = dailyStockRepository; 
         }
 
-        // ✅ Called from frontend or dashboard to get material details
+        //  Called from frontend or dashboard to get material details
         public async Task<List<MaterialDto>> GetMaterialAsync(int projectId)
         {
             var today = DateTime.UtcNow.Date;
@@ -57,25 +57,24 @@ namespace Buildflow.Library.Repository
                             x.DateIssued.Value.ToUniversalTime().Date == today)
                     .SumAsync(x => (decimal?)x.IssuedQuantity) ?? 0;
 
-                // ------------------ Yesterday's Remaining ------------------
+                    //  Yesterday's Remaining.....
                 var yesterdayStock = await _context.DailyStocks
                     .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == yesterday);
                 decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
                 decimal yesterdayInStock = yesterdayStock?.InStock ?? 0;
 
-                // ------------------ Calculate Logic ------------------
-                // ✅ InStock = (YesterdayInward - YesterdayOutward) + (TodayInward - TodayOutward)
+                // Calculate Logic 
+                //  InStock = (YesterdayInward - YesterdayOutward) + (TodayInward - TodayOutward)
                 decimal inStock = yesterdayInStock + (todayInward - todayOutward);
                 if (inStock < 0) inStock = 0;
 
-                // ✅ RequiredQty = Yesterday’s Remaining + Today’s Hardcoded − Today’s Outward
+                // RequiredQty = Yesterday’s Remaining + Today’s Hardcoded − Today’s Outward
                 decimal requiredQty = yesterdayRemaining + todayHardcoded - todayOutward;
                 if (requiredQty < 0) requiredQty = 0;
-
-                // ------------------ Store/Update DailyStock ------------------
+                     // Store/Update DailyStock 
                 await UpdateOrInsertDailyStockAsync(projectId, itemName, todayHardcoded, requiredQty, inStock);
 
-                // ------------------ Prepare MaterialDto ------------------
+    
                 materials.Add(new MaterialDto
                 {
                     SNo = serial++,
@@ -93,7 +92,7 @@ namespace Buildflow.Library.Repository
             return materials;
         }
 
-        // ✅ Auto-updates DailyStock table when recalculated or new day starts
+               //  Auto-updates DailyStock table when recalculated or new day starts
         private async Task UpdateOrInsertDailyStockAsync(int projectId, string itemName, decimal defaultQty, decimal requiredQty, decimal inStock)
         {
             var today = DateTime.UtcNow.Date;
@@ -124,7 +123,7 @@ namespace Buildflow.Library.Repository
             await _context.SaveChangesAsync();
         }
 
-        // ✅ Recalculate only when new stock movement or new day starts
+               //  Recalculate only when new stock movement or new day starts
         public async Task<List<MaterialDto>> TriggerRecalculationIfNeededAsync(int projectId)
         {
             var today = DateTime.UtcNow.Date;
