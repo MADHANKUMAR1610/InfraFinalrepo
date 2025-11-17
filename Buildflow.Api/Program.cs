@@ -28,6 +28,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+Console.WriteLine("Current Environment: " + builder.Environment.EnvironmentName);
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 
@@ -40,7 +41,7 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Key"];
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
-var frontendUrl = builder.Configuration["Frontend: Url"];
+var frontendUrl = builder.Configuration["Frontend:Url"];
 
 
 var supportSystemSpecificOrigins = "_wiseSpecificOrigins";
@@ -135,7 +136,7 @@ builder.Services.AddControllers(options =>
 })
 .AddJsonOptions(options =>
 {
-    options.JsonSerializerOptions.WriteIndented = true; 
+    options.JsonSerializerOptions.WriteIndented = true;
 });
 
 
