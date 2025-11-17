@@ -28,22 +28,6 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
-
-
-var supportSystemSpecificOrigins = "_wiseSpecificOrigins";
-var corsHostName = builder.Configuration.GetSection("Cors").GetSection("HostName").Value;
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: supportSystemSpecificOrigins,
-                        policyBuilder =>
-                        {
-                            if (corsHostName != null)
-                                policyBuilder.WithOrigins(corsHostName)
-                                    .AllowAnyHeader()
-                                .AllowAnyMethod();
-                        });
-});
-
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 
@@ -56,6 +40,27 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["Key"];
 var issuer = jwtSettings["Issuer"];
 var audience = jwtSettings["Audience"];
+var frontendUrl = builder.Configuration["Frontend: Url"];
+
+
+var supportSystemSpecificOrigins = "_wiseSpecificOrigins";
+var corsHostName = builder.Configuration.GetSection("Cors").GetSection("HostName").Value;
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: supportSystemSpecificOrigins,
+                        policyBuilder =>
+                        {
+                            if (corsHostName != null)
+                                policyBuilder.WithOrigins(corsHostName, frontendUrl)
+                                   .AllowAnyHeader()
+                               .AllowAnyMethod()
+                               .AllowCredentials();
+                        });
+});
+
+
+
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -160,6 +165,7 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 }
 
 app.UseAuthentication();
+app.UseRouting();
 app.UseAuthorization();
 
 app.MapControllers();

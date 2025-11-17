@@ -31,9 +31,9 @@ namespace Buildflow.Library.Repository
 
        
 
-        /// <summary>
-        /// Reset or initialize daily stock at start of the day
-        /// </summary>
+        
+        // Reset or initialize daily stock at start of the day
+       
         public async Task ResetDailyStockAsync(int projectId)
         {
             try
@@ -106,10 +106,10 @@ namespace Buildflow.Library.Repository
             }
         }
 
-        /// <summary>
-        /// Update remaining quantity whenever new outward is created
-        /// Only RemainingQty is updated
-        /// </summary>
+        
+        // Update remaining quantity whenever new outward is created
+        // Only RemainingQty is updated
+       
         public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0, decimal inwardQty = 0)
         {
             var today = DateTime.UtcNow.Date;
@@ -165,10 +165,10 @@ namespace Buildflow.Library.Repository
         }
 
 
-        /// <summary>
-        /// Get current daily stock for a project
-        /// Only RemainingQty is returned
-        /// </summary>
+        
+        // Get current daily stock for a project
+        // Only RemainingQty is returned
+       
         public async Task<List<(string ItemName, decimal RemainingQty)>> GetDailyStockAsync(int projectId)
         {
             var today = DateTime.UtcNow.Date;
