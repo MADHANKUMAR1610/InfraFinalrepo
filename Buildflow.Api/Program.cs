@@ -52,7 +52,7 @@ builder.Services.AddCors(options =>
                         policyBuilder =>
                         {
                             if (corsHostName != null)
-                                policyBuilder.WithOrigins(corsHostName, frontendUrl)
+                                policyBuilder.WithOrigins(corsHostName, frontendUrl, "http://localhost:2126")
                                    .AllowAnyHeader()
                                .AllowAnyMethod()
                                .AllowCredentials();
