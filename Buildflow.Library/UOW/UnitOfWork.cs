@@ -104,7 +104,7 @@ namespace Buildflow.Library.UOW
 
             //  MaterialRepository depends on DailyStockRepository
             MaterialRepository = new MaterialRepository(
-                _configuration,
+                
                 _context,
                 new LoggerFactory().CreateLogger<MaterialRepository>(),
                 DailyStockRepository

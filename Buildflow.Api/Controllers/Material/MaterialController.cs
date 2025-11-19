@@ -1,14 +1,14 @@
 ﻿using Buildflow.Service.Service.Material;
-using Buildflow.Service.Service.Project;        
-using Microsoft.AspNetCore.Authorization;        
+using Buildflow.Service.Service.Project;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;                   
+using System.Security.Claims;
 
 namespace Buildflow.Api.Controllers.Material
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class MaterialController : ControllerBase
     {
         private readonly MaterialService _materialService;
@@ -20,11 +20,10 @@ namespace Buildflow.Api.Controllers.Material
             _projectService = projectService;
         }
 
-        
         [HttpGet("my-project/materials")]
         public async Task<IActionResult> GetMaterialForLoggedInEngineer()
         {
-            //  Get EmpId from JWT token
+            // 1️⃣ Get EmpId from JWT
             string empIdString = User.FindFirst("EmpId")?.Value;
 
             if (string.IsNullOrEmpty(empIdString))
@@ -32,19 +31,17 @@ namespace Buildflow.Api.Controllers.Material
 
             int employeeId = int.Parse(empIdString);
 
-            //  Fetch approved projects assigned to this employee
+            // 2️⃣ Fetch approved projects for this employee
             var projects = await _projectService.GetApprovedProjectsByEmployeeAsync(employeeId);
 
             if (!projects.Any())
                 return BadRequest("No approved projects assigned to this employee.");
 
-           
+            // 3️⃣ Use first assigned project (as per your rule)
             int projectId = projects.First().ProjectId;
 
-            //  Call existing material logic
-           
-            var result = await _materialService.TriggerRecalculationIfNeededAsync(projectId);
-
+            // 4️⃣ NEW LOGIC → Call MaterialService → GetMaterialAsync
+            var result = await _materialService.GetMaterialAsync(projectId);
 
             return Ok(result);
         }

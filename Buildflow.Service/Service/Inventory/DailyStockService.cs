@@ -1,5 +1,7 @@
-﻿using Buildflow.Library.Repository.Interfaces;
+﻿using Buildflow.Infrastructure.Entities;
+using Buildflow.Library.Repository.Interfaces;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Buildflow.Service.Service.Inventory
@@ -10,16 +12,67 @@ namespace Buildflow.Service.Service.Inventory
 
         public DailyStockService(IDailyStockRepository dailyStockRepository)
         {
-            _dailyStockRepository = dailyStockRepository ?? throw new ArgumentNullException(nameof(dailyStockRepository));
+            _dailyStockRepository = dailyStockRepository
+                ?? throw new ArgumentNullException(nameof(dailyStockRepository));
         }
 
-        //reset daily stock at start of the day
+        // 1️⃣ Reset daily stock at the start of the day
         public async Task ResetDailyStockAsync(int projectId)
         {
             if (projectId <= 0)
-                throw new ArgumentException("Invalid project ID provided.", nameof(projectId));
+                throw new ArgumentException("Invalid project ID.", nameof(projectId));
 
             await _dailyStockRepository.ResetDailyStockAsync(projectId);
+        }
+
+        // 2️⃣ Update stock when inward/outward happens
+        public async Task UpdateDailyStockAsync(
+            int projectId,
+            string itemName,
+            decimal outwardQty = 0,
+            decimal inwardQty = 0)
+        {
+            if (projectId <= 0)
+                throw new ArgumentException("Invalid project ID.", nameof(projectId));
+
+            if (string.IsNullOrWhiteSpace(itemName))
+                throw new ArgumentException("Item name cannot be empty.", nameof(itemName));
+
+            await _dailyStockRepository.UpdateDailyStockAsync(
+                projectId,
+                itemName,
+                outwardQty,
+                inwardQty);
+        }
+
+        // 3️⃣ For BOQ creation day (Option B)
+        public async Task ApplyBoqItemsToDailyStockAsync(int projectId, List<BoqItem> boqItems)
+        {
+            if (projectId <= 0)
+                throw new ArgumentException("Invalid project ID.", nameof(projectId));
+
+            if (boqItems == null || boqItems.Count == 0)
+                return;
+
+            await _dailyStockRepository.ApplyBoqItemsToDailyStockAsync(projectId, boqItems);
+        }
+
+        // 4️⃣ Bulk update (when multiple movements happened)
+        public async Task UpdateDailyStockForProjectAsync(int projectId)
+        {
+            if (projectId <= 0)
+                throw new ArgumentException("Invalid project ID.", nameof(projectId));
+
+            await _dailyStockRepository.UpdateDailyStockForProjectAsync(projectId);
+        }
+
+        // 5️⃣ Get today’s daily stock values for dashboard/material page
+        public async Task<List<(string ItemName, decimal RemainingQty)>> GetDailyStockAsync(int projectId)
+        {
+            if (projectId <= 0)
+                throw new ArgumentException("Invalid project ID.", nameof(projectId));
+
+            return await _dailyStockRepository.GetDailyStockAsync(projectId);
         }
     }
 }

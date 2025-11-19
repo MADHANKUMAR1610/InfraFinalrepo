@@ -16,213 +16,205 @@ namespace Buildflow.Library.Repository
     {
         private readonly BuildflowAppContext _context;
         private readonly ILogger<DailyStockRepository> _logger;
-        private readonly IConfiguration _configuration;
-       
 
         public DailyStockRepository(
             IConfiguration configuration,
             BuildflowAppContext context,
-            ILogger<DailyStockRepository> logger) 
+            ILogger<DailyStockRepository> logger)
         {
-            _configuration = configuration;
             _context = context;
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _logger = logger;
         }
 
-       
-
-        
-        // Reset or initialize daily stock at start of the day
-       
+        // --------------------------------------------------------------------
+        // 1️⃣ RESET DAILY STOCK (NEW DAY)
+        // --------------------------------------------------------------------
         public async Task ResetDailyStockAsync(int projectId)
-        {
-            try
-            {
-                var today = DateTime.UtcNow.Date;
-                var yesterday = today.AddDays(-1);
-
-                bool todayExists = await _context.DailyStocks
-                    .AnyAsync(d => d.ProjectId == projectId && d.Date.Date == today);
-
-                if (todayExists)
-                {
-                    _logger.LogInformation($"Daily stock for project {projectId} already exists. Skipping reset.");
-                    return;
-                }
-
-                var yesterdayStocks = await _context.DailyStocks
-                    .Where(d => d.ProjectId == projectId && d.Date.Date == yesterday)
-                    .ToListAsync();
-
-                var newStocks = new List<DailyStock>();
-
-                if (yesterdayStocks.Any())
-                {
-                    // Day 2+: carry forward yesterday's remaining
-                    foreach (var yStock in yesterdayStocks)
-                    {
-                        decimal todayHardcoded = DailyStockRequirement.RequiredStock[yStock.ItemName];
-                        decimal newRemaining = yStock.RemainingQty + todayHardcoded;
-
-                        newStocks.Add(new DailyStock
-                        {
-                            ProjectId = projectId,
-                            ItemName = yStock.ItemName,
-                            DefaultQty = todayHardcoded,
-                            RemainingQty = newRemaining,
-                            InStock = yStock.InStock,     
-                            Date = today
-                        });
-                    }
-
-                    _logger.LogInformation($"Carried forward yesterday's remaining stock for project {projectId}.");
-                }
-                else
-                {
-                    // Day 1: initialize from hardcoded values
-                    foreach (var kvp in DailyStockRequirement.RequiredStock)
-                    {
-                        newStocks.Add(new DailyStock
-                        {
-                            ProjectId = projectId,
-                            ItemName = kvp.Key,
-                            DefaultQty = kvp.Value,
-                            RemainingQty = kvp.Value,
-                            InStock = 0,
-                            Date = today
-                        });
-                    }
-
-                    _logger.LogInformation($"Initialized first-day stock for project {projectId}.");
-                }
-
-                await _context.DailyStocks.AddRangeAsync(newStocks);
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error resetting daily stock for project {ProjectId}", projectId);
-                throw;
-            }
-        }
-
-        
-        // Update remaining quantity whenever new outward is created
-        // Only RemainingQty is updated
-       
-        public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0, decimal inwardQty = 0)
         {
             var today = DateTime.UtcNow.Date;
             var yesterday = today.AddDays(-1);
 
-            // Get yesterday's remaining
-            var yesterdayStock = await _context.DailyStocks
-                .Where(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == yesterday)
-                .FirstOrDefaultAsync();
+            // If today's rows already exist → skip
+            if (await _context.DailyStocks.AnyAsync(d =>
+                d.ProjectId == projectId && d.Date == today))
+                return;
 
-            decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
-            decimal yesterdayInStock = yesterdayStock?.InStock ?? 0;
+            // Yesterday rows
+            var yesterdayStocks = await _context.DailyStocks
+                .Where(d => d.ProjectId == projectId && d.Date == yesterday)
+                .ToListAsync();
 
-            // Today hardcoded
-            decimal todayHardcoded = DailyStockRequirement.RequiredStock.ContainsKey(itemName)
-                ? DailyStockRequirement.RequiredStock[itemName]
-                : 0;
+            var newStocks = new List<DailyStock>();
 
-            // Calculate today's remaining (do not consider in-stock)
-            decimal todayRemaining = yesterdayRemaining + todayHardcoded - outwardQty;
-            if (todayRemaining < 0) todayRemaining = 0;
-
-            // Update or create today's DailyStock
-            decimal todayInStock = yesterdayInStock + inwardQty - outwardQty;
-            if (todayInStock < 0) todayInStock = 0;
-
-            var todayStock = await _context.DailyStocks
-       .FirstOrDefaultAsync(d => d.ProjectId == projectId && d.ItemName == itemName && d.Date == today);
-
-            if (todayStock == null)
-                
+            foreach (var item in DailyStockRequirement.RequiredStock)
             {
-                todayStock = new DailyStock
+                string itemName = item.Key;
+                decimal todayHardcoded = item.Value;
+
+                decimal yesterdayRemaining =
+                    yesterdayStocks.FirstOrDefault(x => x.ItemName == itemName)?.RemainingQty ?? 0;
+
+                // Total Inward/Outward up to today
+                decimal totalInward = await _context.StockInwards
+                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName)
+                    .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+
+                decimal totalOutward = await _context.StockOutwards
+                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName)
+                    .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+
+                decimal inStock = totalInward - totalOutward;
+                if (inStock < 0) inStock = 0;
+
+                // REQUIRED FORMULA WITHOUT BOQ (BOQ will be applied separately)
+                decimal requiredQty =
+                    (yesterdayRemaining + todayHardcoded)
+                    - totalOutward
+                    - inStock;
+
+                if (requiredQty < 0)
+                    requiredQty = 0;
+
+                newStocks.Add(new DailyStock
                 {
                     ProjectId = projectId,
                     ItemName = itemName,
                     DefaultQty = todayHardcoded,
-                    RemainingQty = todayRemaining,
-                    InStock = todayInStock,
+                    RemainingQty = requiredQty,
+                    InStock = inStock,
                     Date = today
-                };
-                await _context.DailyStocks.AddAsync(todayStock);
+                });
             }
-            else
+
+            await _context.DailyStocks.AddRangeAsync(newStocks);
+            await _context.SaveChangesAsync();
+        }
+
+
+
+        // --------------------------------------------------------------------
+        // 2️⃣ APPLY BOQ QUANTITIES ON THE DAY OF BOQ CREATION (OPTION-B)
+        // --------------------------------------------------------------------
+        public async Task ApplyBoqItemsToDailyStockAsync(int projectId, List<BoqItem> boqItems)
+        {
+            var today = DateTime.UtcNow.Date;
+
+            // make sure today’s stock rows exist
+            await ResetDailyStockAsync(projectId);
+
+            foreach (var item in boqItems)
             {
-                todayStock.RemainingQty = todayRemaining;
-                todayStock.DefaultQty = todayHardcoded;
-                _context.DailyStocks.Update(todayStock);
-                todayStock.InStock = todayInStock;
+                if (item.ItemName == null || item.Quantity == null)
+                    continue;
+
+                string itemName = item.ItemName;
+                decimal boqQty = item.Quantity.Value;
+
+                var todayStock = await _context.DailyStocks
+                    .FirstOrDefaultAsync(d => d.ProjectId == projectId &&
+                                              d.ItemName == itemName &&
+                                              d.Date == today);
+
+                if (todayStock == null)
+                    continue;
+
+                // Add BOQ qty to today's RequiredQty BEFORE final calculation adjustment
+                todayStock.RemainingQty += boqQty;
+
+                await RecalculateRequiredQty(projectId, itemName);
             }
 
             await _context.SaveChangesAsync();
         }
 
 
-        
-        // Get current daily stock for a project
-        // Only RemainingQty is returned
-       
-        public async Task<List<(string ItemName, decimal RemainingQty)>> GetDailyStockAsync(int projectId)
+
+        // --------------------------------------------------------------------
+        // 3️⃣ INTERNAL METHOD TO APPLY FINAL FORMULA
+        // --------------------------------------------------------------------
+        private async Task RecalculateRequiredQty(int projectId, string itemName)
         {
             var today = DateTime.UtcNow.Date;
-            var result = new List<(string, decimal)>();
 
-            var todayStocks = await _context.DailyStocks
-                .Where(d => d.ProjectId == projectId && d.Date.Date == today)
-                .ToListAsync();
+            var todayStock = await _context.DailyStocks
+                .FirstOrDefaultAsync(x => x.ProjectId == projectId &&
+                                          x.ItemName == itemName &&
+                                          x.Date == today);
 
-            foreach (var item in todayStocks)
-            {
-                result.Add((item.ItemName, item.RemainingQty));
-            }
+            if (todayStock == null)
+                return;
 
-            return result;
+            // Recalculate totals for today
+            decimal totalInward = await _context.StockInwards
+                .Where(x => x.ProjectId == projectId && x.Itemname == itemName)
+                .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+
+            decimal totalOutward = await _context.StockOutwards
+                .Where(x => x.ProjectId == projectId && x.ItemName == itemName)
+                .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+
+            decimal inStock = totalInward - totalOutward;
+            if (inStock < 0) inStock = 0;
+
+            // FINAL REQUIRED FORMULA
+            decimal requiredQty =
+                todayStock.RemainingQty  // (this already contains yesterday + hardcoded + BOQ)
+                - totalOutward
+                - inStock;
+
+            if (requiredQty < 0)
+                requiredQty = 0;
+
+            todayStock.InStock = inStock;
+            todayStock.RemainingQty = requiredQty;
+
+            await _context.SaveChangesAsync();
         }
+
+
+
+        // --------------------------------------------------------------------
+        // 4️⃣ UPDATE ON INWARD/OUTWARD
+        // --------------------------------------------------------------------
+        public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0, decimal inwardQty = 0)
+        {
+            await RecalculateRequiredQty(projectId, itemName);
+        }
+
+
+
+        // --------------------------------------------------------------------
+        // 5️⃣ BULK UPDATE
+        // --------------------------------------------------------------------
         public async Task UpdateDailyStockForProjectAsync(int projectId)
         {
-            var today = DateTime.UtcNow.Date;
-
             var items = await _context.StockInwards
                 .Where(x => x.ProjectId == projectId)
                 .Select(x => x.Itemname)
                 .Union(
                     _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId)
-                    .Select(x => x.ItemName)
-                )
+                        .Where(x => x.ProjectId == projectId)
+                        .Select(x => x.ItemName))
                 .Distinct()
                 .ToListAsync();
 
             foreach (var item in items)
-            {
-                decimal todayInward = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.Itemname == item &&
-                                x.DateReceived.Value.ToUniversalTime().Date == today)
-                    .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
-
-                decimal todayOutward = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.ItemName == item &&
-                                x.DateIssued.Value.ToUniversalTime().Date == today)
-                    .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
-
-                await UpdateDailyStockAsync(
-                    projectId,
-                    item,
-                    outwardQty: todayOutward,
-                    inwardQty: todayInward
-                );
-            }
+                await RecalculateRequiredQty(projectId, item);
         }
 
 
+
+        // --------------------------------------------------------------------
+        // 6️⃣ GET DAILY STOCK
+        // --------------------------------------------------------------------
+        public async Task<List<(string ItemName, decimal RemainingQty)>> GetDailyStockAsync(int projectId)
+        {
+            var today = DateTime.UtcNow.Date;
+
+            return await _context.DailyStocks
+                .Where(d => d.ProjectId == projectId && d.Date == today)
+                .Select(d => new ValueTuple<string, decimal>(d.ItemName, d.RemainingQty))
+                .ToListAsync();
+        }
     }
 }
