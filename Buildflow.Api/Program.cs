@@ -48,20 +48,17 @@ var supportSystemSpecificOrigins = "_wiseSpecificOrigins";
 var corsHostName = builder.Configuration.GetSection("Cors").GetSection("HostName").Value;
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: supportSystemSpecificOrigins,
-                        policyBuilder =>
-                        {
-                            if (corsHostName != null)
-                                policyBuilder.WithOrigins(corsHostName, frontendUrl, "http://localhost:2126")
-                                   .AllowAnyHeader()
-                               .AllowAnyMethod()
-                               .AllowCredentials();
-                        });
+    options.AddPolicy(name: supportSystemSpecificOrigins, policyBuilder =>
+    {
+        policyBuilder
+            .WithOrigins(
+                frontendUrl,"http://localhost:2126"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
 });
-
-
-
-
 
 builder.Services.AddAuthentication(options =>
 {
@@ -156,7 +153,6 @@ app.UseStaticFiles();
 
 app.UseHttpsRedirection();
 app.UseCors(supportSystemSpecificOrigins);
-
 app.ExceptionMiddleware();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
