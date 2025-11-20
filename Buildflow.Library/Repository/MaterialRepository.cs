@@ -4,7 +4,6 @@ using Buildflow.Infrastructure.Entities;
 using Buildflow.Library.Repository.Interfaces;
 using Buildflow.Utility.DTO;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -20,247 +19,234 @@ namespace Buildflow.Library.Repository
         private readonly IDailyStockRepository _dailyStockRepository;
 
         public MaterialRepository(
-    BuildflowAppContext context,
-    ILogger<MaterialRepository> logger,
-    IDailyStockRepository dailyStockRepository)
+            BuildflowAppContext context,
+            ILogger<MaterialRepository> logger,
+            IDailyStockRepository dailyStockRepository)
         {
             _context = context;
             _logger = logger;
             _dailyStockRepository = dailyStockRepository;
         }
 
-        // ---------------------------------------------------------
-        // MAIN MATERIAL LIST
-        // ---------------------------------------------------------
         public async Task<List<MaterialDto>> GetMaterialAsync(int projectId)
         {
             var today = DateTime.UtcNow.Date;
             var yesterday = today.AddDays(-1);
 
-            var result = new List<MaterialDto>();
-            int serial = 1;
+            // Ensure base DailyStock rows exist
+            await _dailyStockRepository.ResetDailyStockAsync(projectId);
 
-            // 1️⃣ Collect all items:
-            // - Hardcoded RequiredStock
-            // - Items from BOQ
-            // - Items from Inward/Outward
+            // Load BOQ Items
             var boqItems = await _context.BoqItems
                 .Where(b => b.Boq!.ProjectId == projectId)
                 .ToListAsync();
 
-            var dbItems = await _context.StockInwards
-                  .Where(x => x.ProjectId == projectId)
-                  .Select(x => x.Itemname)
-                  .Union(
-                      _context.StockOutwards
-                      .Where(x => x.ProjectId == projectId)
-                      .Select(x => x.ItemName)
-                  )
-                  .Distinct()
-                  .ToListAsync();
+            // Load Yesterday Stock
+            var yesterdayStocks = await _context.DailyStocks
+                .Where(d => d.ProjectId == projectId && d.Date == yesterday)
+                .ToListAsync();
 
+            // Load today’s inwards
+            var inwardsToday = await _context.StockInwards
+                .Where(s => s.ProjectId == projectId &&
+                            s.DateReceived!.Value.ToUniversalTime().Date == today)
+                .GroupBy(s => s.Itemname)
+                .Select(g => new { Item = g.Key, Qty = g.Sum(x => (decimal?)x.QuantityReceived) ?? 0 })
+                .ToListAsync();
+
+            // Load today’s outwards
+            var outwardsToday = await _context.StockOutwards
+                .Where(s => s.ProjectId == projectId &&
+                            s.DateIssued!.Value.ToUniversalTime().Date == today)
+                .GroupBy(s => s.ItemName)
+                .Select(g => new { Item = g.Key, Qty = g.Sum(x => (decimal?)x.IssuedQuantity) ?? 0 })
+                .ToListAsync();
+
+            // Load distinct DB items
+            var dbItems = await _context.StockInwards
+                .Where(x => x.ProjectId == projectId)
+                .Select(x => x.Itemname)
+                .Union(_context.StockOutwards
+                    .Where(x => x.ProjectId == projectId)
+                    .Select(x => x.ItemName))
+                .Distinct()
+                .ToListAsync();
+
+            // Merge all item names
             var allItems = DailyStockRequirement.RequiredStock.Keys
                 .Union(dbItems)
                 .Union(boqItems.Select(b => b.ItemName))
-                .Where(i => i != null)
+                .Where(i => !string.IsNullOrWhiteSpace(i))
                 .Distinct()
                 .ToList();
 
-            foreach (var itemName in allItems)
+            // Load approval tickets
+            var tickets = await _context.Tickets
+               .Where(t =>
+                    t.TicketType == "BOQ_APPROVAL" &&
+                    t.BoqId != null &&
+                    t.Boq!.ProjectId == projectId)
+               .Include(t => t.Boq!.BoqItems)
+               .ToListAsync();
+
+            // Unit resolution
+            var unitsFromInwards = await _context.StockInwards
+                .Where(x => x.ProjectId == projectId && x.Unit != null)
+                .GroupBy(x => x.Itemname)
+                .Select(g => new { Item = g.Key, Unit = g.First().Unit })
+                .ToListAsync();
+
+            var unitsFromOutwards = await _context.StockOutwards
+                .Where(x => x.ProjectId == projectId && x.Unit != null)
+                .GroupBy(x => x.ItemName)
+                .Select(g => new { Item = g.Key, Unit = g.First().Unit })
+                .ToListAsync();
+
+            var unitsFromBoq = boqItems
+                .Where(b => b.Unit != null)
+                .GroupBy(b => b.ItemName)
+                .Select(g => new { Item = g.Key, Unit = g.First().Unit })
+                .ToList();
+
+            // Build lookup dictionaries
+            var inwardsTodayDict = inwardsToday.ToDictionary(x => x.Item!, x => x.Qty);
+            var outwardsTodayDict = outwardsToday.ToDictionary(x => x.Item!, x => x.Qty);
+            var yesterdayStockDict = yesterdayStocks.ToDictionary(x => x.ItemName!, x => x);
+
+            var boqGroups = boqItems
+                .GroupBy(b => b.ItemName)
+                .ToDictionary(g => g.Key!, g => g.Sum(x => (decimal)(x.Quantity ?? 0)));
+
+            var unitDict = new Dictionary<string, string>();
+            foreach (var u in unitsFromInwards) unitDict[u.Item!] = u.Unit!;
+            foreach (var u in unitsFromOutwards) if (!unitDict.ContainsKey(u.Item!)) unitDict[u.Item!] = u.Unit!;
+            foreach (var u in unitsFromBoq) if (!unitDict.ContainsKey(u.Item!)) unitDict[u.Item!] = u.Unit!;
+
+            // Approval dictionary
+            var approvalMap = new Dictionary<string, int?>();
+            foreach (var item in allItems)
             {
-                if (string.IsNullOrEmpty(itemName))
-                    continue;
-
-                // --------------------------------------
-                // 2️⃣ Get yesterday values from DailyStock
-                // --------------------------------------
-                var yesterdayStock = await _context.DailyStocks
-                   .FirstOrDefaultAsync(x =>
-                        x.ProjectId == projectId &&
-                        x.ItemName == itemName &&
-                        x.Date == yesterday);
-
-                decimal yesterdayRemaining = yesterdayStock?.RemainingQty ?? 0;
-                decimal yesterdayInstock = yesterdayStock?.InStock ?? 0;
-
-                // --------------------------------------
-                // 3️⃣ Hardcoded Required Qty for Today
-                // --------------------------------------
-                decimal todayHardcoded = DailyStockRequirement.RequiredStock.ContainsKey(itemName)
-                    ? DailyStockRequirement.RequiredStock[itemName]
-                    : 0;
-
-                // --------------------------------------
-                // 4️⃣ BOQ Required Qty (Only approved BOQ)
-                // --------------------------------------
-                decimal boqRequiredToday = boqItems
-                    .Where(b => b.ItemName == itemName)
-                    .Sum(b => (decimal)(b.Quantity ?? 0));
-
-                // --------------------------------------
-                // 5️⃣ Total Inward Today
-                // --------------------------------------
-                decimal todayInward = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.Itemname == itemName &&
-                                x.DateReceived.HasValue &&
-                                x.DateReceived.Value.ToUniversalTime().Date == today)
-                    .SumAsync(x => (decimal?)x.QuantityReceived) ?? 0;
-
-                // --------------------------------------
-                // 6️⃣ Total Outward Today
-                // --------------------------------------
-                decimal todayOutward = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.ItemName == itemName &&
-                                x.DateIssued.HasValue &&
-                                x.DateIssued.Value.ToUniversalTime().Date == today)
-                    .SumAsync(x => (decimal?)x.IssuedQuantity) ?? 0;
-
-                // --------------------------------------
-                // 7️⃣ Instock Calculation (carry-forward)
-                // --------------------------------------
-                decimal instock = yesterdayInstock + todayInward - todayOutward;
-                if (instock < 0) instock = 0;
-
-                // --------------------------------------
-                // 8️⃣ Required Qty FINAL FORMULA
-                // --------------------------------------
-                decimal required =
-                    (yesterdayRemaining + todayHardcoded + boqRequiredToday)
-                    - todayOutward
-                    - instock;
-
-                if (required < 0)
-                    required = 0;
-
-                // --------------------------------------
-                // 9️⃣ LEVEL Calculation (based ONLY on Instock)
-                // --------------------------------------
-                string level;
-                if (instock == 0)
-                    level = "Urgent";
-                else if (instock <= required / 3)
-                    level = "High";
-                else if (instock <= required * 2 / 3)
-                    level = "Medium";
-                else
-                    level = "Low";
-
-                // --------------------------------------
-                // 🔟 STATUS
-                // --------------------------------------
-                // 10️⃣ STATUS (get from Ticket.Isapproved)
-                //-------------------------------------------------------
-                // 1️⃣ Check if BOQ exists for this item
-                //-------------------------------------------------------
-                string status = "";
-                bool boqExists = await _context.BoqItems
-                    .AnyAsync(b =>
-                        b.Boq!.ProjectId == projectId &&
-                        EF.Functions.ILike(b.ItemName, $"%{itemName}%")
-                    );
-
-                //-------------------------------------------------------
-                // 2️⃣ If RequiredQty = 0 → leave empty
-                //-------------------------------------------------------
-                if (required == 0)
-                {
-                    status = "";  // deactivated
-                }
-                else if (!boqExists)
-                {
-                    //---------------------------------------------------
-                    // 3️⃣ Hardcoded-only, no BOQ request
-                    //---------------------------------------------------
-                    status = "";  // deactivated
-                }
-                else
-                {
-                    //---------------------------------------------------
-                    // 4️⃣ BOQ Exists → Fetch approval status
-                    //---------------------------------------------------
-                    int? isApproved = await _context.Tickets
-                        .Where(t =>
-                            t.TicketType == "BOQ_APPROVAL" &&
-                            t.BoqId != null &&
-                            t.Boq!.ProjectId == projectId &&
-                            t.Boq.BoqItems.Any(i =>
-                                EF.Functions.ILike(i.ItemName, $"%{itemName}%")
-                            )
-                        )
-                        .Select(t => t.Isapproved)
-                        .FirstOrDefaultAsync();
-
-                    //---------------------------------------------------
-                    // 5️⃣ BOQ Exists → Evaluate
-                    //---------------------------------------------------
-                    if (isApproved == 1 || isApproved == 2)
-                        status = "Approved";
-                    else
-                        status = "Pending";
-                }
-
-
-                // 1️⃣ Try get unit from StockInwards
-                string unit = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.Itemname == itemName &&
-                                !string.IsNullOrEmpty(x.Unit))
-                    .Select(x => x.Unit)
-                    .FirstOrDefaultAsync();
-
-                // 2️⃣ If not available, get from StockOutwards
-                if (string.IsNullOrEmpty(unit))
-                {
-                    unit = await _context.StockOutwards
-                        .Where(x => x.ProjectId == projectId &&
-                                    x.ItemName == itemName &&
-                                    !string.IsNullOrEmpty(x.Unit))
-                        .Select(x => x.Unit)
-                        .FirstOrDefaultAsync();
-                }
-
-                // 3️⃣ If still empty, get unit from BOQ items
-                if (string.IsNullOrEmpty(unit))
-                {
-                    unit = await _context.BoqItems
-                        .Where(b => b.Boq!.ProjectId == projectId &&
-                                    b.ItemName == itemName &&
-                                    !string.IsNullOrEmpty(b.Unit))
-                        .Select(b => b.Unit)
-                        .FirstOrDefaultAsync();
-                }
-
-                // 4️⃣ Fallback
-                if (string.IsNullOrEmpty(unit))
-                    unit = "Units";
-
-
-                // --------------------------------------
-                // 1️⃣1️⃣ Update today's DailyStock
-                // --------------------------------------
-                await _dailyStockRepository.UpdateDailyStockAsync(
-                    projectId,
-                    itemName,
-                    todayOutward,
-                    todayInward
+                var match = tickets.FirstOrDefault(t =>
+                    t.Boq!.BoqItems.Any(b =>
+                        b.ItemName != null &&
+                        b.ItemName.ToLower().Contains(item.ToLower())
+                    )
                 );
 
-                // --------------------------------------
-                // 1️⃣2️⃣ Add into result
-                // --------------------------------------
+                approvalMap[item] = match?.Isapproved;
+            }
+
+            // Today's stock
+            var todayStocks = await _context.DailyStocks
+                .Where(d => d.ProjectId == projectId && d.Date == today)
+                .ToListAsync();
+
+            var todayStockDict = todayStocks.ToDictionary(d => d.ItemName!, d => d);
+
+            var result = new List<MaterialDto>();
+            int serial = 1;
+
+            foreach (var item in allItems)
+            {
+                var key = item;
+
+                // Yesterday
+                yesterdayStockDict.TryGetValue(key, out var yStock);
+                decimal yRem = yStock?.RemainingQty ?? 0;
+                decimal yInstock = yStock?.InStock ?? 0;
+
+                // Hardcoded
+                bool isHardcoded = DailyStockRequirement.RequiredStock.ContainsKey(key);
+                decimal hardcodedReq = isHardcoded ? DailyStockRequirement.RequiredStock[key] : 0;
+
+                // BOQ required
+                decimal boqReq = boqGroups.ContainsKey(key) ? boqGroups[key] : 0;
+
+                // Inward/outward
+                inwardsTodayDict.TryGetValue(key, out var inward);
+                outwardsTodayDict.TryGetValue(key, out var outward);
+
+                // Instock
+                decimal instock = yInstock + inward - outward;
+                if (instock < 0) instock = 0;
+
+                // Required
+                decimal required = (yRem + hardcodedReq + boqReq) - outward - instock;
+                if (required < 0) required = 0;
+
+                // LEVEL
+                string level = "";
+                if (required > 0)
+                {
+                    if (instock == 0) level = "Urgent";
+                    else if (instock <= required / 3) level = "High";
+                    else if (instock <= required * 2 / 3) level = "Medium";
+                    else level = "Low";
+                }
+
+                // STATUS
+                approvalMap.TryGetValue(key, out var statusValue);
+                string status = "";
+
+                if (!isHardcoded)
+                {
+                    status = statusValue switch
+                    {
+                        1 => "Approved",
+                        2 => "Pending",
+                        0 => "Rejected",
+                        _ => ""
+                    };
+                }
+
+                // UNIT
+                unitDict.TryGetValue(key, out var unit);
+                if (unit == null) unit = "Units";
+
+                // -------------------------------
+                // DB SAVE RULE
+                // -------------------------------
+                bool canSave =
+                    isHardcoded ||  // always save hardcoded items
+                    statusValue == 1; // save only approved BOQ items
+
+                if (todayStockDict.TryGetValue(key, out var tStock))
+                {
+                    if (canSave)
+                    {
+                        tStock.InStock = instock;
+                        tStock.RemainingQty = required;
+                    }
+                }
+                else
+                {
+                    if (canSave)
+                    {
+                        _context.DailyStocks.Add(new DailyStock
+                        {
+                            ProjectId = projectId,
+                            ItemName = key,
+                            InStock = instock,
+                            RemainingQty = required,
+                            DefaultQty = isHardcoded ? hardcodedReq : 0,
+                            Date = today
+                        });
+                    }
+                }
+
+                // Add to UI result always
                 result.Add(new MaterialDto
                 {
                     SNo = serial++,
-                    MaterialList = itemName,
-                    InStockQuantity = $"{instock} {unit}",     // ← HERE
-                    RequiredQuantity = $"{required} {unit}",
+                    MaterialList = key,
+                    InStockQuantity = $"{(int)Math.Round(instock)} {unit}",
+                    RequiredQuantity = $"{(int)Math.Round(required)} {unit}",
                     Level = level,
                     RequestStatus = status
                 });
             }
 
+            await _context.SaveChangesAsync();
             return result;
         }
     }

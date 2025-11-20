@@ -78,8 +78,9 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
     };
 });
-builder.Services.AddDbContext<BuildflowAppContext>(options =>
+builder.Services.AddDbContextPool<BuildflowAppContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 builder.Services.Configure<FormOptions>(options =>
 {
     options.MultipartBodyLengthLimit = 100_000_000; // 100 MB
@@ -101,7 +102,7 @@ builder.Services.AddScoped<IMaterialStatusRepository, MaterialStatusRepository>(
 
 builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
 builder.Services.AddScoped<DailyStockService>();
-builder.Services.AddScoped<DailyStockBackgroundService>();
+builder.Services.AddHostedService<DailyStockBackgroundService>();
 
 builder.Services.AddScoped<MaterialService>();
 builder.Services.AddScoped<InventoryService>();
@@ -207,4 +208,6 @@ void SetSwaggerAction(WebApplicationBuilder webApplicationBuilder)
             Scheme = "bearer"
         });
     }
+
+
 }
