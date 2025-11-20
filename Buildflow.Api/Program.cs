@@ -1,4 +1,4 @@
-
+﻿
 using Buildflow.Api.Middlewares;
 using Buildflow.Infrastructure.DatabaseContext;
 using Buildflow.Library.Repository;
@@ -150,8 +150,6 @@ SetSwaggerAction(builder);
 var app = builder.Build();
 
 app.UseStaticFiles();
-
-
 app.UseHttpsRedirection();
 app.UseCors(supportSystemSpecificOrigins);
 app.ExceptionMiddleware();
@@ -162,13 +160,12 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseSwaggerUI();
 }
 
-app.UseAuthentication();
-app.UseRouting();
-app.UseAuthorization();
+app.UseRouting();          // ✅ MUST COME FIRST
+app.UseAuthentication();   // ✅ MUST COME AFTER routing
+app.UseAuthorization();    // ✅ MUST COME AFTER authentication
 
 app.MapControllers();
 app.Run();
-
 
 void SetSwaggerAction(WebApplicationBuilder webApplicationBuilder)
 {
