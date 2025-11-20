@@ -9,7 +9,7 @@ using Buildflow.Service.Service.Employee;
 using Buildflow.Service.Service.Inventory;
 using Buildflow.Service.Service.Master;
 using Buildflow.Service.Service.Material;
-using Buildflow.Service.Service.MaterialStatus;
+
 using Buildflow.Service.Service.MaterialStockAlert;
 using Buildflow.Service.Service.Notification;
 using Buildflow.Service.Service.Project;
@@ -98,7 +98,7 @@ builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
-builder.Services.AddScoped<IMaterialStatusRepository, MaterialStatusRepository>();
+
 
 builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
 builder.Services.AddScoped<DailyStockService>();
@@ -114,7 +114,7 @@ builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<VendorService>();
-builder.Services.AddScoped<MaterialStatusService>();
+
 builder.Services.AddScoped<MaterialStockAlertService>();
 
 
