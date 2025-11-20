@@ -27,16 +27,19 @@ namespace Buildflow.Library.Repository
         private readonly ILogger<GenericRepository<Infrastructure.Entities.Ticket>> _logger;
 
         private readonly IConfiguration _configuration;
+        private readonly IDailyStockRepository _dailyStockRepository;
 
-        public TicketRepository(IConfiguration configuration, BuildflowAppContext context, ILogger<GenericRepository<Infrastructure.Entities.Ticket>> logger)
+
+        public TicketRepository(IConfiguration configuration, BuildflowAppContext context, ILogger<GenericRepository<Infrastructure.Entities.Ticket>> logger, IDailyStockRepository dailyStockRepository)
             : base(context, logger)
         {
             _logger = logger;
             _configuration = configuration;
+            _dailyStockRepository = dailyStockRepository;
         }
 
 
-        string baseUrl = "  https://buildflowtestingapi.crestclimbers.com";
+        string baseUrl = " https://preciseinfratrackerdemo.preciseelevate.com";
 
         //string baseUrl = "https://buildflowgraphql.crestclimbers.com";
         public IDbConnection CreateConnection() => new NpgsqlConnection(_configuration.GetConnectionString("DefaultConnection"));
@@ -105,6 +108,25 @@ namespace Buildflow.Library.Repository
                 // Get the output values
                 string message = messageParam.Value?.ToString() ?? "";
                 string status = statusParam.Value?.ToString() ?? "";
+
+                // Only run when ticket approval = true
+                if (dto.IsApproved == true)
+                {
+                    // Fetch ticket with BOQ
+                    var ticket = await Context.Tickets
+                        .Include(t => t.Boq)
+                        .FirstOrDefaultAsync(t => t.TicketId == dto.TicketId);
+
+                    if (ticket != null && ticket.BoqId.HasValue)
+                    {
+                        int projectId = ticket.Boq!.ProjectId ?? 0;
+                        int boqId = ticket.BoqId.Value;
+
+                        // Add all BOQ items into DailyStock AFTER approval
+                        await _dailyStockRepository.AddNewBoqItemsToDailyStockAsync(projectId, boqId);
+                    }
+                }
+
 
                 // Debug logging
                 //Console.WriteLine($"SP execution result: {result}");

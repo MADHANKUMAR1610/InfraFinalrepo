@@ -1,4 +1,4 @@
-﻿using Buildflow.Infrastructure.Entities;
+﻿using Buildflow.Infrastructure.Entities;    
 
 namespace Buildflow.Library.Repository.Interfaces
 {
@@ -16,7 +16,8 @@ namespace Buildflow.Library.Repository.Interfaces
 
         Task<List<(string ItemName, decimal RemainingQty)>> GetDailyStockAsync(int projectId);
 
-        //  NEW: Needed for BOQ integration (Option B)
-        Task ApplyBoqItemsToDailyStockAsync(int projectId, List<BoqItem> boqItems);
+       
+        Task AddNewBoqItemsToDailyStockAsync(int projectId, int boqId);
+
     }
 }

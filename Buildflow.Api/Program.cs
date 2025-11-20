@@ -117,6 +117,7 @@ builder.Services.AddScoped<MaterialStatusService>();
 builder.Services.AddScoped<MaterialStockAlertService>();
 
 
+
 builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
 
 

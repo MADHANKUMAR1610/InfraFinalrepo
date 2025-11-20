@@ -178,9 +178,54 @@ namespace Buildflow.Library.Repository
         // --------------------------------------------------------------------
         public async Task UpdateDailyStockAsync(int projectId, string itemName, decimal outwardQty = 0, decimal inwardQty = 0)
         {
-            await RecalculateRequiredQty(projectId, itemName);
-        }
+            var today = DateTime.UtcNow.Date;
 
+            // Find today's DailyStock row for this item
+            var stock = await _context.DailyStocks
+                .FirstOrDefaultAsync(d =>
+                    d.ProjectId == projectId &&
+                    d.ItemName == itemName &&
+                    d.Date == today);
+
+            // If no row exists, create one with default values
+            if (stock == null)
+            {
+                stock = new DailyStock
+                {
+                    ProjectId = projectId,
+                    ItemName = itemName,
+                    DefaultQty = 0,
+                    RemainingQty = 0,
+                    InStock = 0,
+                    Date = today
+                };
+
+                await _context.DailyStocks.AddAsync(stock);
+            }
+
+            // Fetch totals from DB
+            decimal totalInward = await _context.StockInwards
+                .Where(x => x.ProjectId == projectId && x.Itemname == itemName)
+                .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+
+            decimal totalOutward = await _context.StockOutwards
+                .Where(x => x.ProjectId == projectId && x.ItemName == itemName)
+                .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+
+            // InStock calculation
+            stock.InStock = totalInward - totalOutward;
+            if (stock.InStock < 0)
+                stock.InStock = 0;
+
+            // NEW RemainingQty Formula
+            // Remaining BOQ qty = RemainingQty - outward + inward
+            stock.RemainingQty = stock.RemainingQty - outwardQty + inwardQty;
+
+            if (stock.RemainingQty < 0)
+                stock.RemainingQty = 0;
+
+            await _context.SaveChangesAsync();
+        }
 
 
         // --------------------------------------------------------------------
@@ -216,5 +261,50 @@ namespace Buildflow.Library.Repository
                 .Select(d => new ValueTuple<string, decimal>(d.ItemName, d.RemainingQty))
                 .ToListAsync();
         }
+
+
+        public async Task AddNewBoqItemsToDailyStockAsync(int projectId, int boqId)
+        {
+            var today = DateTime.UtcNow.Date;
+
+            var boqItems = await _context.BoqItems
+                .Where(b => b.BoqId == boqId)
+                .ToListAsync();
+
+            foreach (var item in boqItems)
+            {
+                if (string.IsNullOrWhiteSpace(item.ItemName))
+                    continue;
+
+                var existing = await _context.DailyStocks
+                    .FirstOrDefaultAsync(d =>
+                        d.ProjectId == projectId &&
+                        d.ItemName == item.ItemName &&
+                        d.Date == today);
+
+                if (existing == null)
+                {
+                    // Create initial entry from BOQ
+                    await _context.DailyStocks.AddAsync(new DailyStock
+                    {
+                        ProjectId = projectId,
+                        ItemName = item.ItemName!,
+                        DefaultQty = 0,
+                        RemainingQty = item.Quantity ?? 0, // BOQ REQUIRED QTY
+                        InStock = 0,
+                        Date = today
+                    });
+                }
+                else
+                {
+                    // If BOQ updated, update remaining qty
+                    existing.RemainingQty = item.Quantity ?? 0;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+
+
     }
 }

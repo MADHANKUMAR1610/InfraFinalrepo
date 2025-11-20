@@ -21,11 +21,14 @@ namespace Buildflow.Library.Repository
         private readonly ILogger<GenericRepository<StockInward>> _logger;
         private readonly IConfiguration _configuration;
         private readonly BuildflowAppContext _context;
-        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<GenericRepository<StockInward>> logger) : base(context, logger)
+        private readonly IDailyStockRepository _dailyStockRepository;
+
+        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<GenericRepository<StockInward>> logger, IDailyStockRepository dailyStockRepository) : base(context, logger)
         {
             _logger = logger;       
             _configuration = configuration;
             _context = context;
+            _dailyStockRepository = dailyStockRepository;
         }
 
 
@@ -54,7 +57,12 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockInwards.AddAsync(inward);
                 await _context.SaveChangesAsync();
-              
+                await _dailyStockRepository.UpdateDailyStockAsync(
+     inward.ProjectId,
+     inward.Itemname,
+     inwardQty: inward.QuantityReceived ?? 0,
+     outwardQty: 0
+ );
 
                 var vendorName = await _context.Vendors
                        .Where(e => e.VendorId == inward.VendorId)
@@ -113,7 +121,14 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockOutwards.AddAsync(outward);
                 await _context.SaveChangesAsync();
-            
+                await _dailyStockRepository.UpdateDailyStockAsync(
+    outward.ProjectId,
+    outward.ItemName,
+    outwardQty: outward.IssuedQuantity?? 0,
+    inwardQty: 0
+);
+
+
 
 
                 var requestedByName = await _context.EmployeeDetails

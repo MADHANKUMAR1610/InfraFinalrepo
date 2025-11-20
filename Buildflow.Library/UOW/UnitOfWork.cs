@@ -68,7 +68,7 @@ namespace Buildflow.Library.UOW
             _configuration = configuration;
 
             // --- Existing Repository Initializations ---
-            TicketRepository = new TicketRepository(configuration, context, ticketLogger);
+            TicketRepository = new TicketRepository(configuration, context, ticketLogger, DailyStockRepository );
             EmployeeRepository = new EmployeeRepository(configuration, context, employeeLogger);
             reportRepository = new ReportRepository(configuration, context, reportLogger);
             Boq = new ProjectRepository(configuration, context, projectLogger);
@@ -93,7 +93,7 @@ namespace Buildflow.Library.UOW
             ProjectMilestones = new ProjectRepository(configuration, context, projectLogger);
             
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
-            InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger);
+            InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger, DailyStockRepository);
 
             // Corrected DailyStockRepository initialization
             DailyStockRepository = new DailyStockRepository(

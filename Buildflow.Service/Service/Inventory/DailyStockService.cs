@@ -45,18 +45,7 @@ namespace Buildflow.Service.Service.Inventory
                 inwardQty);
         }
 
-        // 3️⃣ For BOQ creation day (Option B)
-        public async Task ApplyBoqItemsToDailyStockAsync(int projectId, List<BoqItem> boqItems)
-        {
-            if (projectId <= 0)
-                throw new ArgumentException("Invalid project ID.", nameof(projectId));
-
-            if (boqItems == null || boqItems.Count == 0)
-                return;
-
-            await _dailyStockRepository.ApplyBoqItemsToDailyStockAsync(projectId, boqItems);
-        }
-
+      
         // 4️⃣ Bulk update (when multiple movements happened)
         public async Task UpdateDailyStockForProjectAsync(int projectId)
         {
@@ -74,5 +63,16 @@ namespace Buildflow.Service.Service.Inventory
 
             return await _dailyStockRepository.GetDailyStockAsync(projectId);
         }
+        public async Task AddNewBoqItemsToDailyStockAsync(int projectId, int boqId)
+        {
+            if (projectId <= 0)
+                throw new ArgumentException("Invalid project ID.", nameof(projectId));
+
+            if (boqId <= 0)
+                throw new ArgumentException("Invalid BOQ ID.", nameof(boqId));
+
+            await _dailyStockRepository.AddNewBoqItemsToDailyStockAsync(projectId, boqId);
+        }
+
     }
 }
