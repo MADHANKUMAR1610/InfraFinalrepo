@@ -304,6 +304,34 @@ namespace Buildflow.Library.Repository
 
             await _context.SaveChangesAsync();
         }
+        public async Task SaveCalculatedStockAsync(int projectId, string itemName, decimal instock, decimal required)
+        {
+            var today = DateTime.UtcNow.Date;
+
+            var stock = await _context.DailyStocks
+                .FirstOrDefaultAsync(x =>
+                    x.ProjectId == projectId &&
+                    x.ItemName == itemName &&
+                    x.Date == today);
+
+            if (stock == null)
+            {
+                stock = new DailyStock
+                {
+                    ProjectId = projectId,
+                    ItemName = itemName,
+                    Date = today,
+                    DefaultQty = 0
+                };
+                await _context.DailyStocks.AddAsync(stock);
+            }
+
+            stock.InStock = instock;
+            stock.RemainingQty = required;
+
+            await _context.SaveChangesAsync();
+        }
+
 
 
     }

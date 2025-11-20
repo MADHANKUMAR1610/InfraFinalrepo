@@ -35,9 +35,10 @@ namespace Buildflow.Service.Service.Inventory
 
                         // Fetch all active projects
                         var activeProjects = await context.Projects
-                          .Where(p => p.IsActive.GetValueOrDefault())
-                          .Select(p => p.ProjectId)
-                           .ToListAsync(stoppingToken);
+                         .Where(p => p.IsActive == true)   // FIXED
+     .Select(p => p.ProjectId)
+     .ToListAsync(stoppingToken);
+
 
                         if (!activeProjects.Any())
                         {
@@ -60,9 +61,10 @@ namespace Buildflow.Service.Service.Inventory
                         }
                     }
 
-                            // Wait until next midnight (12:00:05 AM)
-                    var now = DateTime.Now;
-                    var nextRun = DateTime.Now.Date.AddDays(1).AddSeconds(5);
+                    // Wait until next midnight (12:00:05 AM)
+                    var now = DateTime.UtcNow;
+                    var nextRun = DateTime.UtcNow.Date.AddDays(1).AddSeconds(5);
+
 
                     var delay = nextRun - now;
 

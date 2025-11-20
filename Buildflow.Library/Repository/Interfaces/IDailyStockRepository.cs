@@ -1,4 +1,4 @@
-﻿using Buildflow.Infrastructure.Entities;    
+﻿using Buildflow.Infrastructure.Entities;
 
 namespace Buildflow.Library.Repository.Interfaces
 {
@@ -16,8 +16,14 @@ namespace Buildflow.Library.Repository.Interfaces
 
         Task<List<(string ItemName, decimal RemainingQty)>> GetDailyStockAsync(int projectId);
 
-       
         Task AddNewBoqItemsToDailyStockAsync(int projectId, int boqId);
+
+        // ➕ ADD THIS
+        Task SaveCalculatedStockAsync(
+       int projectId,
+       string itemName,
+       decimal instock,
+       decimal requiredQty);
 
     }
 }
