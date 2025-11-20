@@ -36,7 +36,6 @@ namespace Buildflow.Library.Repository
         public IDbConnection CreateConnection() =>
             new NpgsqlConnection(_configuration.GetConnectionString("DefaultConnection"));
 
-                        //CREATE STOCK INWARD
         public async Task<StockInwardDto> CreateStockInwardAsync(StockInwardDto dto)
         {
             try
@@ -57,22 +56,29 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockInwards.AddAsync(inward);
                 await _context.SaveChangesAsync();
-                await _dailyStockRepository.UpdateDailyStockAsync(
-     inward.ProjectId,
-     inward.Itemname,
-     inwardQty: inward.QuantityReceived ?? 0,
-     outwardQty: 0
- );
 
+                // ✔ Update Stock ONLY when Approved
+                if (inward.Status == "Approved")
+                {
+                    await _dailyStockRepository.UpdateDailyStockAsync(
+                        inward.ProjectId,
+                        inward.Itemname,
+                        outwardQty: 0,
+                        inwardQty: inward.QuantityReceived ?? 0
+                    );
+                }
+
+                // Fetch vendor name
                 var vendorName = await _context.Vendors
-                       .Where(e => e.VendorId == inward.VendorId)
-                       .Select(e => e.VendorName)
-                       .FirstOrDefaultAsync();
+                    .Where(v => v.VendorId == inward.VendorId)
+                    .Select(v => v.VendorName)
+                    .FirstOrDefaultAsync();
 
+                // Fetch employee name
                 var receivedByName = await _context.EmployeeDetails
-                        .Where(e => e.EmpId == inward.ReceivedbyId)
-                        .Select(e => e.FirstName + " " + e.LastName)
-                        .FirstOrDefaultAsync();
+                    .Where(e => e.EmpId == inward.ReceivedbyId)
+                    .Select(e => e.FirstName + " " + e.LastName)
+                    .FirstOrDefaultAsync();
 
                 return new StockInwardDto
                 {
@@ -82,24 +88,22 @@ namespace Buildflow.Library.Repository
                     Itemname = inward.Itemname,
                     VendorId = inward.VendorId,
                     VendorName = vendorName,
+                    QuantityReceived = inward.QuantityReceived,
+                    Unit = inward.Unit,
+                    DateReceived = inward.DateReceived,
                     ReceivedById = inward.ReceivedbyId,
                     ReceivedByName = receivedByName,
-                    QuantityReceived = inward.QuantityReceived,
-                    DateReceived = inward.DateReceived,
-                    Unit = inward.Unit,
                     Status = inward.Status,
-                    Remarks = inward.Remarks,
+                    Remarks = inward.Remarks
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating Stock Inward entry: {Inner}", ex.InnerException?.Message ?? ex.Message);
-                throw new ApplicationException($"Error while creating Stock Inward entry: {ex.InnerException?.Message ?? ex.Message}", ex);
+                _logger.LogError(ex, "Error creating Stock Inward");
+                throw new ApplicationException("Error creating Stock Inward", ex);
             }
         }
 
-
-                               // CREATE STOCK OUTWARD  
         public async Task<StockOutwardDto> CreateStockOutwardAsync(StockOutwardDto dto)
         {
             try
@@ -115,31 +119,31 @@ namespace Buildflow.Library.Repository
                     IssuedToId = dto.IssuedToId,
                     DateIssued = dto.DateIssued?.ToUniversalTime() ?? DateTime.UtcNow,
                     Status = dto.Status ?? "Pending",
-                    Remarks = dto.Remarks,
-                    
+                    Remarks = dto.Remarks
                 };
 
                 await _context.StockOutwards.AddAsync(outward);
                 await _context.SaveChangesAsync();
-                await _dailyStockRepository.UpdateDailyStockAsync(
-    outward.ProjectId,
-    outward.ItemName,
-    outwardQty: outward.IssuedQuantity?? 0,
-    inwardQty: 0
-);
 
-
-
+                if (outward.Status == "Approved")
+                {
+                    await _dailyStockRepository.UpdateDailyStockAsync(
+                        outward.ProjectId,
+                        outward.ItemName,
+                        outwardQty: outward.IssuedQuantity ?? 0,
+                        inwardQty: 0
+                    );
+                }
 
                 var requestedByName = await _context.EmployeeDetails
-                        .Where(e => e.EmpId == outward.RequestedById)
-                        .Select(e => e.FirstName + " " + e.LastName)
-                        .FirstOrDefaultAsync();
+                    .Where(e => e.EmpId == outward.RequestedById)
+                    .Select(e => e.FirstName + " " + e.LastName)
+                    .FirstOrDefaultAsync();
 
                 var issuedToName = await _context.EmployeeDetails
-                        .Where(e => e.EmpId == outward.IssuedToId)
-                        .Select(e => e.FirstName + " " + e.LastName)
-                        .FirstOrDefaultAsync();
+                    .Where(e => e.EmpId == outward.IssuedToId)
+                    .Select(e => e.FirstName + " " + e.LastName)
+                    .FirstOrDefaultAsync();
 
                 return new StockOutwardDto
                 {
@@ -160,11 +164,12 @@ namespace Buildflow.Library.Repository
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating Stock outward entry: {Inner}", ex.InnerException?.Message ?? ex.Message);
-                throw new ApplicationException($"Error while creating Stock outward entry: {ex.InnerException?.Message ?? ex.Message}", ex);
+                _logger.LogError(ex, "Error creating Stock Outward");
+                throw new ApplicationException("Error creating Stock Outward", ex);
             }
         }
-                         // GET STOCK INWARD BY PROJECT ID 
+
+        // GET STOCK INWARD BY PROJECT ID 
         public async Task<IEnumerable<StockInwardDto>> GetStockInwardsByProjectIdAsync(int projectId)
         {
             try
