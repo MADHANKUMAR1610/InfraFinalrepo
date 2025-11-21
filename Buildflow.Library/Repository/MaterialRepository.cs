@@ -194,9 +194,6 @@ namespace Buildflow.Library.Repository
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
 
-            // --------------------------
-            // RESULT BUILDING
-            // --------------------------
             var result = new List<MaterialDto>();
             int s = 1;
 
