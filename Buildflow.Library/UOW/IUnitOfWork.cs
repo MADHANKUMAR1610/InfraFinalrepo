@@ -36,7 +36,7 @@ namespace Buildflow.Library.UOW
         IEmployeeRepository EmployeeRepository { get; }
         IInventoryRepository InventoryRepository { get; }
         IMaterialRepository MaterialRepository { get; }
-        IMaterialStatusRepository MaterialStatusRepository { get; }
+  
         IMaterialStockAlertRepository MaterialStockAlertRepository { get; }
         IDailyStockRepository DailyStockRepository { get; }
         Task<int> CompleteAsync();

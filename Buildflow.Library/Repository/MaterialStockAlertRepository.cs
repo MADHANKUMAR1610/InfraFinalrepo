@@ -38,9 +38,16 @@ namespace Buildflow.Library.Repository
 
                 //  Filter only urgent materials
                 var urgentMaterials = allMaterials
-                    .Where(m => m.Level.Equals("Urgent", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                    .Where(m => string.Equals(m.Level, "Urgent", StringComparison.OrdinalIgnoreCase))
+                   . Select(m => new MaterialDto
+                    {
 
+                       MaterialList = m.MaterialList,
+                        RequiredQuantity = m.RequiredQuantity,
+                       InStockQuantity = m.InStockQuantity,
+                        Level = m.Level
+                    })
+                    .ToList();
                 return urgentMaterials;
             }
             catch (Exception ex)

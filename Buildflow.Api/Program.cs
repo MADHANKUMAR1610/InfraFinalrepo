@@ -1,4 +1,4 @@
-
+﻿
 using Buildflow.Api.Middlewares;
 using Buildflow.Infrastructure.DatabaseContext;
 using Buildflow.Library.Repository;
@@ -9,7 +9,7 @@ using Buildflow.Service.Service.Employee;
 using Buildflow.Service.Service.Inventory;
 using Buildflow.Service.Service.Master;
 using Buildflow.Service.Service.Material;
-using Buildflow.Service.Service.MaterialStatus;
+
 using Buildflow.Service.Service.MaterialStockAlert;
 using Buildflow.Service.Service.Notification;
 using Buildflow.Service.Service.Project;
@@ -98,7 +98,7 @@ builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
-builder.Services.AddScoped<IMaterialStatusRepository, MaterialStatusRepository>();
+
 
 builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
 builder.Services.AddScoped<DailyStockService>();
@@ -114,7 +114,7 @@ builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<VendorService>();
-builder.Services.AddScoped<MaterialStatusService>();
+
 builder.Services.AddScoped<MaterialStockAlertService>();
 
 
@@ -151,8 +151,6 @@ SetSwaggerAction(builder);
 var app = builder.Build();
 
 app.UseStaticFiles();
-
-
 app.UseHttpsRedirection();
 app.UseCors(supportSystemSpecificOrigins);
 app.ExceptionMiddleware();
@@ -163,13 +161,12 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseSwaggerUI();
 }
 
-app.UseAuthentication();
-app.UseRouting();
-app.UseAuthorization();
+app.UseRouting();          // ✅ MUST COME FIRST
+app.UseAuthentication();   // ✅ MUST COME AFTER routing
+app.UseAuthorization();    // ✅ MUST COME AFTER authentication
 
 app.MapControllers();
 app.Run();
-
 
 void SetSwaggerAction(WebApplicationBuilder webApplicationBuilder)
 {

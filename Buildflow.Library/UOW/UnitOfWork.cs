@@ -43,7 +43,7 @@ namespace Buildflow.Library.UOW
         public IMaterialRepository MaterialRepository { get; private set; }
 
         public IMaterialStockAlertRepository MaterialStockAlertRepository { get; private set; }
-        public IMaterialStatusRepository MaterialStatusRepository { get; private set; }
+       
         public IDailyStockRepository DailyStockRepository { get; private set; }
 
         public UnitOfWork(
@@ -111,7 +111,7 @@ namespace Buildflow.Library.UOW
             );
 
          
-            MaterialStatusRepository = new MaterialStatusRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStatusRepository>(), DailyStockRepository);
+           
             MaterialStockAlertRepository = new MaterialStockAlertRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(), MaterialRepository);
         
         }
