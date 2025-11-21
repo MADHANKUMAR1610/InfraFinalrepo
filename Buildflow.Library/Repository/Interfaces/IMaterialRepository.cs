@@ -9,6 +9,7 @@ namespace Buildflow.Library.Repository.Interfaces
         // MAIN MATERIAL GET
         Task<List<MaterialDto>> GetMaterialAsync(int projectId);
         Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId);
+        Task<List<string>> GetAllMaterialNamesAsync(int projectId);
 
     }
 }

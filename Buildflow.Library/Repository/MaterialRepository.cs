@@ -395,6 +395,30 @@ public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
             })
             .ToList();
         }
+        public async Task<List<string>> GetAllMaterialNamesAsync(int projectId)
+        {
+            // Hardcoded items
+            var hardcoded = DailyStockRequirement.RequiredStock.Keys
+                .Select(x => x.Trim())
+                .ToList();
+
+            // BOQ items (distinct)
+            var boqItems = await _context.BoqItems
+                .Where(b => b.Boq!.ProjectId == projectId)
+                .Select(b => b.ItemName)
+                .Distinct()
+                .ToListAsync();
+
+            // Merge + remove null and duplicates
+            var all = hardcoded
+                .Union(boqItems.Where(x => !string.IsNullOrWhiteSpace(x)))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList();
+
+            return all;
+        }
+
 
 
     }

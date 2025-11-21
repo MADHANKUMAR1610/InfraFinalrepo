@@ -56,5 +56,13 @@ namespace Buildflow.Api.Controllers.Material
             return Ok(result);
         }
 
+        [HttpGet("material-names/{projectId}")]
+        public async Task<IActionResult> GetMaterialNames(int projectId)
+        {
+            var data = await _materialService.GetMaterialNamesAsync(projectId);
+            return Ok(data);
+        }
+
+
     }
 }

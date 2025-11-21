@@ -23,6 +23,10 @@ namespace Buildflow.Service.Service.Material
         {
             return await _materialRepository.GetMaterialStatusAsync(projectId);
         }
+        public async Task<List<string>> GetMaterialNamesAsync(int projectId)
+        {
+            return await _materialRepository.GetAllMaterialNamesAsync(projectId);
+        }
 
     }
 }
