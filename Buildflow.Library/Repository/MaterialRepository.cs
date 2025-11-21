@@ -276,14 +276,17 @@ namespace Buildflow.Library.Repository
 
                     // SAVE ONLY APPROVED
                     // ALWAYS SAVE BASE HARDCORED REQUIRED QTY
-                    decimal saveRequired = required;
+                    // SAVE TO DAILYSTOCK — ONLY HARDCORED + APPROVED BOQ
+
+                    // SAVE THE EXACT CALCULATED REQUIRED — NOT BASE VALUE
+                    decimal saveRequired = required;   // store the computed requirement
 
 
-                    // If BOQ exists AND approved → add approved qty
-                    if (appQty > 0)
-                        saveRequired += appQty;
-
-                    // If BOQ pending or rejected → DO NOT add anything
+                    // but do NOT allow pending or rejected to affect saving
+                    if (appQty == 0 && pendQty > 0)
+                        continue;
+                    if (appQty == 0 && rejQty > 0)
+                        continue;
 
                     if (!todayDict.TryGetValue(key, out var tRow))
                     {
@@ -302,6 +305,7 @@ namespace Buildflow.Library.Repository
                         tRow.InStock = instock;
                         tRow.RemainingQty = saveRequired;
                     }
+
 
                     continue;
                 }
@@ -394,27 +398,30 @@ namespace Buildflow.Library.Repository
 
         public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
         {
-            var materials = await GetMaterialAsync(projectId);
+            var today = DateTime.UtcNow.Date;
 
-            // FILTER:
-            // 1️⃣ Hardcoded items → always included
-            // 2️⃣ BOQ items → only APPROVED included
-            var filtered = materials
-                .Where(m =>
-                    DailyStockRequirement.RequiredStock.Keys
-                        .Any(h => h.Trim().Equals(m.MaterialList.Trim(), StringComparison.OrdinalIgnoreCase))
-                    ||
-                    m.RequestStatus == "Approved"   // Only approved BOQ
-                )
+            // Fetch all DailyStock rows for today
+            var dailyStocks = await _context.DailyStocks
+                .Where(d => d.ProjectId == projectId && d.Date == today)
+                .OrderByDescending(d => d.Id) // latest-written first
+                .ToListAsync();
+
+            // Group by item, pick most recent row
+            var latestPerItem = dailyStocks
+                .GroupBy(d => d.ItemName.ToLower().Trim())
+                .Select(g => g.First()) // latest saved entry only
                 .ToList();
 
-            return filtered.Select(m => new MaterialStatusDto
+            // Convert to DTO
+            var result = latestPerItem.Select(d => new MaterialStatusDto
             {
-                MaterialName = m.MaterialList,
-                InStock = Convert.ToInt32(m.InStockQuantity.Split(' ')[0]),
-                RequiredQty = Convert.ToInt32(m.RequiredQuantity.Split(' ')[0])
+                MaterialName = d.ItemName,
+                InStock = (int)d.InStock,
+                RequiredQty = (int)d.RemainingQty
             })
             .ToList();
+
+            return result;
         }
 
         public async Task<List<string>> GetAllMaterialNamesAsync(int projectId)
