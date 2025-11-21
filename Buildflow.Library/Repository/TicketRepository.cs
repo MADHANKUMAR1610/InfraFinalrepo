@@ -543,27 +543,27 @@ namespace Buildflow.Library.Repository
                     move_to = reader.IsDBNull(15) ? null : reader.GetInt32(15),
                     ticket_label = reader.IsDBNull(16) ? null : reader.GetString(16),
                     ticket_type = reader.IsDBNull(17) ? null : reader.GetString(17),
-                   transaction_id= reader.IsDBNull(18) ? null : reader.GetInt32(18),
+                    transaction_id = reader.IsDBNull(18) ? null : reader.GetInt32(18),
                     ticket_owner_name = reader.IsDBNull(19) ? null : reader.GetString(19),
                     role_name = reader.IsDBNull(20) ? null : reader.GetString(20),
-
                     CommentsAndAttachments = reader.IsDBNull(21) || string.IsNullOrWhiteSpace(reader.GetString(21))
                         ? new List<TicketCommentWithAttachmentDto>()
                         : JsonSerializer.Deserialize<List<TicketCommentWithAttachmentDto>>(reader.GetString(21), jsonOptions),
-
                     ApprovalsGrouped = reader.IsDBNull(22) || string.IsNullOrWhiteSpace(reader.GetString(22))
                         ? new Dictionary<string, List<TicketApprovalDto>>()
                         : JsonSerializer.Deserialize<Dictionary<string, List<TicketApprovalDto>>>(reader.GetString(22), jsonOptions),
                     VendorId = reader.IsDBNull(23) ? null : reader.GetInt32(23),
-                    VendorName= reader.IsDBNull(24) ? null : reader.GetString(24)
-
+                    VendorName = reader.IsDBNull(24) ? null : reader.GetString(24)
                 };
             }
+
+            // 🟩 ADD THIS SAFETY RETURN HERE
+            if (ticket == null)
+                return new TicketData { ticket_id = ticketId };
 
             await connection.CloseAsync();
             return ticket;
         }
-
         //public async Task<IActionResult> AddCommentAndAttachmentAsync(TicketCommentAttachmentInputDto inputDto)
         //{
         //    using var transaction = await Context.Database.BeginTransactionAsync();

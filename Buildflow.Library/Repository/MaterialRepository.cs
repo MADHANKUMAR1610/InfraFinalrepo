@@ -192,8 +192,9 @@ namespace Buildflow.Library.Repository
             var todayDict = todayRows
                 .GroupBy(d => N(d.ItemName))
                 .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-
+            // --------------------------
+            // RESULT BUILDING
+            // --------------------------
             var result = new List<MaterialDto>();
             int s = 1;
 
@@ -235,6 +236,8 @@ namespace Buildflow.Library.Repository
 
                 decimal required = (yRem + requiredBase + appQty) - totalOut - instock;
                 if (required < 0) required = 0;
+             
+
 
                 // --------------------------
                 // HARD-CODED MAIN ROW
@@ -272,27 +275,32 @@ namespace Buildflow.Library.Repository
                         });
 
                     // SAVE ONLY APPROVED
-                    if (appQty > 0)
-                    {
-                        decimal saveRequired = requiredBase + appQty;
+                    // ALWAYS SAVE BASE HARDCORED REQUIRED QTY
+                    decimal saveRequired = required;
 
-                        if (!todayDict.TryGetValue(key, out var tRow))
+
+                    // If BOQ exists AND approved → add approved qty
+                    if (appQty > 0)
+                        saveRequired += appQty;
+
+                    // If BOQ pending or rejected → DO NOT add anything
+
+                    if (!todayDict.TryGetValue(key, out var tRow))
+                    {
+                        _context.DailyStocks.Add(new DailyStock
                         {
-                            _context.DailyStocks.Add(new DailyStock
-                            {
-                                ProjectId = projectId,
-                                ItemName = name,
-                                InStock = instock,
-                                RemainingQty = saveRequired,
-                                DefaultQty = requiredBase,
-                                Date = today
-                            });
-                        }
-                        else
-                        {
-                            tRow.InStock = instock;
-                            tRow.RemainingQty = saveRequired;
-                        }
+                            ProjectId = projectId,
+                            ItemName = name,
+                            InStock = instock,
+                            RemainingQty = saveRequired,
+                            DefaultQty = requiredBase,
+                            Date = today
+                        });
+                    }
+                    else
+                    {
+                        tRow.InStock = instock;
+                        tRow.RemainingQty = saveRequired;
                     }
 
                     continue;
@@ -361,14 +369,20 @@ namespace Buildflow.Library.Repository
             await _context.SaveChangesAsync();
             return result;
         }
-
         private string ComputeLevel(decimal req, decimal stk)
         {
-            if (req <= 0) return "";
-            if (stk <= 0) return "Urgent";
-            if (stk <= req / 3) return "Medium";
-            if (stk <= req * 2 / 3) return "Low";
-            return "";
+            if (req <= 0)
+                return "";
+
+            // percentage from 0–10 scale
+            decimal percentage = (stk / req) * 10;
+
+            if (percentage <= 2.5m) return "Urgent";
+            if (percentage <= 5m) return "High";
+            if (percentage <= 7.5m) return "Medium";
+            if (percentage <= 10m) return "Low";
+
+            return ""; // above 10 => very safe
         }
 
         // small wrapper to preserve previous behavior name (ResetDailyStockAsync call)
@@ -377,14 +391,24 @@ namespace Buildflow.Library.Repository
             // Call the existing repository method
             await _dailyStockRepository.ResetDailyStockAsync(projectId);
         }
-    
-public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
+
+        public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
         {
-            // get the same list you create in GetMaterialAsync()
             var materials = await GetMaterialAsync(projectId);
 
-            // convert to MaterialStatusDto
-            return materials.Select(m => new MaterialStatusDto
+            // FILTER:
+            // 1️⃣ Hardcoded items → always included
+            // 2️⃣ BOQ items → only APPROVED included
+            var filtered = materials
+                .Where(m =>
+                    DailyStockRequirement.RequiredStock.Keys
+                        .Any(h => h.Trim().Equals(m.MaterialList.Trim(), StringComparison.OrdinalIgnoreCase))
+                    ||
+                    m.RequestStatus == "Approved"   // Only approved BOQ
+                )
+                .ToList();
+
+            return filtered.Select(m => new MaterialStatusDto
             {
                 MaterialName = m.MaterialList,
                 InStock = Convert.ToInt32(m.InStockQuantity.Split(' ')[0]),
@@ -392,29 +416,38 @@ public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
             })
             .ToList();
         }
+
         public async Task<List<string>> GetAllMaterialNamesAsync(int projectId)
         {
-            // Hardcoded items
+            // 1️⃣ Hardcoded items
             var hardcoded = DailyStockRequirement.RequiredStock.Keys
                 .Select(x => x.Trim())
                 .ToList();
 
-            // BOQ items (distinct)
-            var boqItems = await _context.BoqItems
-                .Where(b => b.Boq!.ProjectId == projectId)
-                .Select(b => b.ItemName)
-                .Distinct()
-                .ToListAsync();
+            // 2️⃣ Get BOQ items with APPROVED tickets only
+            var approvedBoqItems = await (
+                from boq in _context.BoqItems
+                join ticket in _context.Tickets
+                    on boq.BoqId equals ticket.BoqId
+                where boq.Boq!.ProjectId == projectId
+                      && ticket.TicketType == "BOQ_APPROVAL"
+                      && ticket.Isapproved == 1                 // Approved only
+                      && boq.ItemName != null
+                select boq.ItemName
+            )
+            .Distinct()
+            .ToListAsync();
 
-            // Merge + remove null and duplicates
+            // 3️⃣ Merge hardcoded + approved BOQ
             var all = hardcoded
-                .Union(boqItems.Where(x => !string.IsNullOrWhiteSpace(x)))
+                .Union(approvedBoqItems)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(x => x)
                 .ToList();
 
             return all;
         }
+
 
 
 
