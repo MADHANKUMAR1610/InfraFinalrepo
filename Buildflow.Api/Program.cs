@@ -80,7 +80,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // ----------------------
 // DATABASE
 // ----------------------
-builder.Services.AddDbContextPool<BuildflowAppContext>(options =>
+builder.Services.AddDbContext<BuildflowAppContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
