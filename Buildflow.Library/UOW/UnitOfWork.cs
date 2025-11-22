@@ -45,6 +45,8 @@ namespace Buildflow.Library.UOW
         public IMaterialStockAlertRepository MaterialStockAlertRepository { get; private set; }
        
         public IDailyStockRepository DailyStockRepository { get; private set; }
+        public IMilestoneMasterRepository MilestoneMasterRepository { get; private set; }
+
 
         public UnitOfWork(
             BuildflowAppContext context,
@@ -94,6 +96,10 @@ namespace Buildflow.Library.UOW
             
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
             InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger, DailyStockRepository);
+            MilestoneMasterRepository = new MilestoneMasterRepository(
+   _context,
+   new LoggerFactory().CreateLogger<MilestoneMasterRepository>()
+);
 
             // Corrected DailyStockRepository initialization
             DailyStockRepository = new DailyStockRepository(
@@ -115,6 +121,7 @@ namespace Buildflow.Library.UOW
             MaterialStockAlertRepository = new MaterialStockAlertRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(), MaterialRepository);
         
         }
+
         public async Task<int> CompleteAsync()
         {
             return await _context.SaveChangesAsync();

@@ -26,7 +26,7 @@ namespace Buildflow.Library.Repository.Interfaces
         Task<IEnumerable<ProjectTypeDTO>> GetProjectTypesAsync();
         Task<IEnumerable<ProjectSectorDTO>> GetProjectSectorsAsync();
         Task<BaseResponse> UpsertProjectBudgetDetails(ProjectBudgetInputDto dto);
-        Task<BaseResponse> UpsertProjectMilestoneDetails(ProjectMilestoneInputDto dto);
+      //  Task<BaseResponse> UpsertProjectMilestoneDetails(ProjectMilestoneInputDto dto);
 
         Task<BaseResponse> UpsertProjectTeam(ProjectTeamInputDto dto);
         Task<IEnumerable<ProjectData>> GetApprovedProjectsByEmployeeAsync(int employeeId);

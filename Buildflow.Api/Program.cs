@@ -9,6 +9,7 @@ using Buildflow.Service.Service.Inventory;
 using Buildflow.Service.Service.Master;
 using Buildflow.Service.Service.Material;
 using Buildflow.Service.Service.MaterialStockAlert;
+using Buildflow.Service.Service.Milestone;
 using Buildflow.Service.Service.Notification;
 using Buildflow.Service.Service.Project;
 using Buildflow.Service.Service.Report;
@@ -109,6 +110,7 @@ builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
 builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
 builder.Services.AddScoped<DailyStockService>();
 builder.Services.AddHostedService<DailyStockBackgroundService>();
+builder.Services.AddScoped<IMilestoneMasterRepository, MilestoneMasterRepository>();
 
 builder.Services.AddScoped<MaterialService>();
 builder.Services.AddScoped<InventoryService>();
@@ -121,6 +123,7 @@ builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<VendorService>();
 builder.Services.AddScoped<MaterialStockAlertService>();
+builder.Services.AddScoped<MilestoneMasterService>();
 builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
 
 builder.Services.AddHttpContextAccessor();

@@ -398,19 +398,19 @@ namespace Buildflow.Api.Controllers.Project
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
-        [HttpPost("upsertProjectMilestones")]
-        public async Task<ActionResult> AddMilestones(ProjectMilestoneInputDto dto)
-        {
-            try
-            {
-                var result = await _projectService.InsertProjectMilestones(dto);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, $"Error: {ex.Message}");
-            }
-        }
+        //[HttpPost("upsertProjectMilestones")]
+        //public async Task<ActionResult> AddMilestones(ProjectMilestoneInputDto dto)
+        //{
+        //    try
+        //    {
+        //        var result = await _projectService.InsertProjectMilestones(dto);
+        //        return Ok(result);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, $"Error: {ex.Message}");
+        //    }
+        //}
 
         [HttpPost("upsertBoq")]
 

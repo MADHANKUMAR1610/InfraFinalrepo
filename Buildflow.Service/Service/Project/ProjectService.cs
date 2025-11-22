@@ -125,10 +125,10 @@ namespace Buildflow.Service.Service.Project
             };
         }
 
-        public async Task<BaseResponse> InsertProjectMilestones(ProjectMilestoneInputDto dto)
-        {
-            return await _unitOfWork.ProjectMilestones.UpsertProjectMilestoneDetails(dto);
-        }
+        //public async Task<BaseResponse> InsertProjectMilestones(ProjectMilestoneInputDto dto)
+        //{
+        //    return await _unitOfWork.ProjectMilestones.UpsertProjectMilestoneDetails(dto);
+        //}
 
         public async Task<BaseResponse> UpsertBoqAsync(UpsertBoqRequestDto request)
         {

@@ -42,6 +42,8 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<Materialcategory> Materialcategories { get; set; }
 
+    public virtual DbSet<Milestonemaster> Milestonemasters { get; set; }
+
     public virtual DbSet<Notification> Notifications { get; set; }
 
     public virtual DbSet<Project> Projects { get; set; }
@@ -66,6 +68,8 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<ProjectType> ProjectTypes { get; set; }
 
+    public virtual DbSet<Projectstatusmaster> Projectstatusmasters { get; set; }
+
     public virtual DbSet<PurchaseOrder> PurchaseOrders { get; set; }
 
     public virtual DbSet<PurchaseOrderApproval> PurchaseOrderApprovals { get; set; }
@@ -89,6 +93,8 @@ public partial class BuildflowAppContext : DbContext
     public virtual DbSet<StockOutward> StockOutwards { get; set; }
 
     public virtual DbSet<Subcontractor> Subcontractors { get; set; }
+
+    public virtual DbSet<Taskstatusmaster> Taskstatusmasters { get; set; }
 
     public virtual DbSet<Ticket> Tickets { get; set; }
 
@@ -551,6 +557,16 @@ public partial class BuildflowAppContext : DbContext
                 .HasColumnName("categoryname");
         });
 
+        modelBuilder.Entity<Milestonemaster>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("milestonemaster_pkey");
+
+            entity.ToTable("milestonemaster", "project");
+
+            entity.Property(e => e.Code).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(200);
+        });
+
         modelBuilder.Entity<Notification>(entity =>
         {
             entity.HasKey(e => e.NotificationId).HasName("notifications_pkey");
@@ -970,6 +986,16 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
         });
 
+        modelBuilder.Entity<Projectstatusmaster>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("projectstatusmaster_pkey");
+
+            entity.ToTable("projectstatusmaster", "project");
+
+            entity.Property(e => e.Code).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(200);
+        });
+
         modelBuilder.Entity<PurchaseOrder>(entity =>
         {
             entity.HasKey(e => e.PurchaseOrderId).HasName("purchase_order_pkey");
@@ -1336,6 +1362,16 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.Website)
                 .HasMaxLength(255)
                 .HasColumnName("website");
+        });
+
+        modelBuilder.Entity<Taskstatusmaster>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("taskstatusmaster_pkey");
+
+            entity.ToTable("taskstatusmaster", "project");
+
+            entity.Property(e => e.Code).HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(200);
         });
 
         modelBuilder.Entity<Ticket>(entity =>

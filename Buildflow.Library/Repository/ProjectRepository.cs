@@ -474,40 +474,40 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
             return response;
         }
 
-        public async Task<BaseResponse> UpsertProjectMilestoneDetails(ProjectMilestoneInputDto dto)
-        {
-            using var con = CreateConnection();
-            var response = new BaseResponse();
+        //public async Task<BaseResponse> UpsertProjectMilestoneDetails(ProjectMilestoneInputDto dto)
+        //{
+        //    using var con = CreateConnection();
+        //    var response = new BaseResponse();
 
-            try
-            {
-                var parameters = new DynamicParameters();
-                parameters.Add("iproject_id", dto.ProjectId, DbType.Int32);
-                parameters.Add("milestone_data", JsonConvert.SerializeObject(dto.MilestoneList), DbType.String);
+        //    try
+        //    {
+        //        var parameters = new DynamicParameters();
+        //        parameters.Add("iproject_id", dto.ProjectId, DbType.Int32);
+        //        parameters.Add("milestone_data", JsonConvert.SerializeObject(dto.MilestoneList), DbType.String);
 
-                // Output parameters
-                parameters.Add("message", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 500);
-                parameters.Add("status", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 10);
+        //        // Output parameters
+        //        parameters.Add("message", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 500);
+        //        parameters.Add("status", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 10);
 
-                await con.ExecuteAsync("CALL project.insert_project_milestones(@iproject_id, @milestone_data, @message, @status);", parameters);
+        //        await con.ExecuteAsync("CALL project.insert_project_milestones(@iproject_id, @milestone_data, @message, @status);", parameters);
 
-                var status = parameters.Get<string>("status");
-                var message = parameters.Get<string>("message");
+        //        var status = parameters.Get<string>("status");
+        //        var message = parameters.Get<string>("message");
 
-                response.Success = status?.ToLower() == "true";
-                response.Message = message;
-                response.Data = new { projectid = dto.ProjectId };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Error inserting project milestone details: " + ex.Message);
-                response.Success = false;
-                response.Message = "An error occurred while inserting milestone details";
-                response.Data = false;
-            }
+        //        response.Success = status?.ToLower() == "true";
+        //        response.Message = message;
+        //        response.Data = new { projectid = dto.ProjectId };
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError("Error inserting project milestone details: " + ex.Message);
+        //        response.Success = false;
+        //        response.Message = "An error occurred while inserting milestone details";
+        //        response.Data = false;
+        //    }
 
-            return response;
-        }
+        //    return response;
+        //}
 
 
         public async Task<BaseResponse> UpsertProjectTeam(ProjectTeamInputDto dto)
