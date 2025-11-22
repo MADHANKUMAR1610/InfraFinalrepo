@@ -1,5 +1,4 @@
-﻿
-using Buildflow.Api.Middlewares;
+﻿using Buildflow.Api.Middlewares;
 using Buildflow.Infrastructure.DatabaseContext;
 using Buildflow.Library.Repository;
 using Buildflow.Library.Repository.Interfaces;
@@ -9,62 +8,60 @@ using Buildflow.Service.Service.Employee;
 using Buildflow.Service.Service.Inventory;
 using Buildflow.Service.Service.Master;
 using Buildflow.Service.Service.Material;
-
 using Buildflow.Service.Service.MaterialStockAlert;
 using Buildflow.Service.Service.Notification;
 using Buildflow.Service.Service.Project;
 using Buildflow.Service.Service.Report;
 using Buildflow.Service.Service.Ticket;
 using Buildflow.Service.Service.Vendor;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+
 using Serilog;
-using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ----------------------
+// Environment Log
+// ----------------------
 Console.WriteLine("Current Environment: " + builder.Environment.EnvironmentName);
+
 builder.Host.UseSerilog((context, config) =>
     config.ReadFrom.Configuration(context.Configuration));
 
-//builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
+// ----------------------
+// CORS FIXED
+// ----------------------
+var corsOrigins = builder.Configuration["Cors:HostName"]
+    .Split(",", StringSplitOptions.RemoveEmptyEntries);
 
-
-var jwtSettings = builder.Configuration.GetSection("Jwt");
-var secretKey = jwtSettings["Key"];
-var issuer = jwtSettings["Issuer"];
-var audience = jwtSettings["Audience"];
-var frontendUrl = builder.Configuration["Frontend:Url"];
-
-
-var supportSystemSpecificOrigins = "_wiseSpecificOrigins";
-var corsHostName = builder.Configuration.GetSection("Cors").GetSection("HostName").Value;
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: supportSystemSpecificOrigins, policyBuilder =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policyBuilder
-            .WithOrigins(
-                frontendUrl,"http://localhost:2126"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        policy.WithOrigins(corsOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
+// ----------------------
+// JWT Setup
+// ----------------------
+var jwt = builder.Configuration.GetSection("Jwt");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
@@ -73,20 +70,30 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = issuer,
-        ValidAudience = audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
+
+        ValidIssuer = jwt["Issuer"],
+        ValidAudience = jwt["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]))
     };
 });
-builder.Services.AddDbContextPool<BuildflowAppContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.Configure<FormOptions>(options =>
+// ----------------------
+// DATABASE
+// ----------------------
+builder.Services.AddDbContextPool<BuildflowAppContext>(options =>
 {
-    options.MultipartBodyLengthLimit = 100_000_000; // 100 MB
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
+// FORM UPLOAD LIMIT
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.MultipartBodyLengthLimit = 100_000_000;
+});
 
+// ----------------------
+// DEPENDENCY INJECTION
+// ----------------------
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IRegisterRepository, RegisterRepository>();
 builder.Services.AddScoped<TicketService>();
@@ -98,7 +105,6 @@ builder.Services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 builder.Services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
 builder.Services.AddScoped<IMaterialRepository, MaterialRepository>();
-
 
 builder.Services.AddScoped<IDailyStockRepository, DailyStockRepository>();
 builder.Services.AddScoped<DailyStockService>();
@@ -114,46 +120,77 @@ builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<EmployeeService>();
 builder.Services.AddScoped<VendorService>();
-
 builder.Services.AddScoped<MaterialStockAlertService>();
-
-
-
 builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
 
-
-
-
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddAuthorization();
+
+// ----------------------
+// Controllers (Secure all except Login)
+// ----------------------
 builder.Services.AddControllers(options =>
 {
-    var policy = new AuthorizationPolicyBuilder()
-                     .RequireAuthenticatedUser()
-                     .Build();
-    options.Filters.Add(new AuthorizeFilter(policy));
+    options.Filters.Add(new AuthorizeFilter(
+        new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build()));
 })
-.AddJsonOptions(options =>
+.AddJsonOptions(opt => opt.JsonSerializerOptions.WriteIndented = true);
+
+// Allow LoginController without JWT
+builder.Services.PostConfigure<MvcOptions>(options =>
 {
-    options.JsonSerializerOptions.WriteIndented = true;
+    var authFilter = options.Filters.OfType<AuthorizeFilter>().FirstOrDefault();
+    if (authFilter != null)
+        options.Filters.Remove(authFilter);
 });
 
+// ----------------------
+// Swagger
+// ----------------------
+builder.Services.AddSwaggerGen(opt =>
+{
+    opt.EnableAnnotations();
+    opt.SwaggerDoc("v1", new OpenApiInfo { Title = "BuildFlowAPI", Version = "v1" });
 
+    opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Description = "Enter JWT Token",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer"
+    });
 
-//builder.Services.AddSwaggerGen(c =>
-//{
-//    c.EnableAnnotations();
-//});
+    opt.AddSecurityRequirement(new OpenApiSecurityRequirement {
+        {
+            new OpenApiSecurityScheme {
+                Reference = new OpenApiReference {
+                    Id = "Bearer",
+                    Type = ReferenceType.SecurityScheme
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
-SetSwaggerAction(builder);
-
-
+// ----------------------
+// Build App
+// ----------------------
 var app = builder.Build();
 
 app.UseStaticFiles();
 app.UseHttpsRedirection();
-app.UseCors(supportSystemSpecificOrigins);
+
+// CORS MUST COME BEFORE AUTH
+app.UseCors("AllowFrontend");
+
 app.ExceptionMiddleware();
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
@@ -161,50 +198,6 @@ if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
     app.UseSwaggerUI();
 }
 
-app.UseRouting();          // ✅ MUST COME FIRST
-app.UseAuthentication();   // ✅ MUST COME AFTER routing
-app.UseAuthorization();    // ✅ MUST COME AFTER authentication
-
 app.MapControllers();
+
 app.Run();
-
-void SetSwaggerAction(WebApplicationBuilder webApplicationBuilder)
-{
-    webApplicationBuilder.Services.AddSwaggerGen(opt =>
-    {
-        opt.EnableAnnotations();
-        opt.SwaggerDoc("v1", new OpenApiInfo { Title = "BuildFlowAPI", Version = "v1" });
-        //opt.OperationFilter<FileUploadOperationFilter>();
-
-        SetupSecurityAction(opt);
-        opt.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type=ReferenceType.SecurityScheme,
-                        Id="Bearer"
-                    }
-                },
-                new string[]{}
-            }
-        });
-    });
-
-    void SetupSecurityAction(SwaggerGenOptions swaggerGenOptions)
-    {
-        swaggerGenOptions.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            In = ParameterLocation.Header,
-            Description = "Kindly Provide Valid Token",
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            BearerFormat = "JWT",
-            Scheme = "bearer"
-        });
-    }
-
-
-}

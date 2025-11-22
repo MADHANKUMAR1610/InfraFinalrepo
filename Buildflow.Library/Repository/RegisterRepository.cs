@@ -7,9 +7,6 @@ using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-
-
-
 //using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -52,8 +49,9 @@ namespace Buildflow.Library.Repository
         {
             try
             {
-                using var connection = Context.Database.GetDbConnection();
+                using var connection = (NpgsqlConnection)CreateConnection();
                 await connection.OpenAsync();
+
 
                 // Call the function get_vendor_detail
                 const string query = "SELECT * FROM vendor.get_vendor_detail(@vendorid)";
@@ -92,7 +90,7 @@ namespace Buildflow.Library.Repository
                     Password = first.password ?? string.Empty,
                     RoleId = first.role_id ?? 0,
                     RoleName = first.role_name ?? string.Empty,
-                    RoleCode=first.rolecode ?? string.Empty,
+                    RoleCode = first.rolecode ?? string.Empty,
                 };
             }
             catch (Exception ex)
@@ -106,7 +104,7 @@ namespace Buildflow.Library.Repository
         {
             try
             {
-                using var connection = Context.Database.GetDbConnection();
+                using var connection = (NpgsqlConnection)CreateConnection();
                 await connection.OpenAsync();
 
                 const string query = "SELECT * FROM employee.get_employee_full_detail2(@empid)";
@@ -133,7 +131,7 @@ namespace Buildflow.Library.Repository
                     Phone = firstRecord.phone,
                     RoleId = firstRecord.role_id,
                     RoleName = firstRecord.role_name,
-                    RoleCode= firstRecord.rolecode,
+                    RoleCode = firstRecord.rolecode,
                     DeptId = firstRecord.dept_id,
                     DeptName = firstRecord.dept_name,
 
@@ -220,7 +218,8 @@ namespace Buildflow.Library.Repository
             try
             {
                 var result = new List<EmployeeByDeptDto>();
-                var connection = Context.Database.GetDbConnection();
+                using var connection = (NpgsqlConnection)CreateConnection();
+                await connection.OpenAsync();
 
                 if (connection.State != ConnectionState.Open)
                     await connection.OpenAsync();
@@ -269,7 +268,8 @@ namespace Buildflow.Library.Repository
             try
             {
                 var result = new List<EmployeeByRoleDto>();
-                var connection = Context.Database.GetDbConnection();
+                using var connection = (NpgsqlConnection)CreateConnection();
+                await connection.OpenAsync();
 
                 if (connection.State != ConnectionState.Open)
                     await connection.OpenAsync();
@@ -308,45 +308,6 @@ namespace Buildflow.Library.Repository
                 throw;
             }
         }
-
-
-        //public async Task<EmployeeDataList?> GetEmployeesGroupedByRole()
-        //{
-        //    try
-        //    {
-        //        var rolesWithEmployees = await Context.EmployeeRoles
-        //            .Include(x => x.Role)
-        //            .Include(er => er.Emp)
-        //            .ToListAsync();
-
-        //        var result = new EmployeeDataList();
-
-        //        foreach (var group in rolesWithEmployees.GroupBy(r => r.Role.RoleName))
-        //        {
-        //            var employees = group.Select(r => new EmployeeData
-        //            {
-        //                EmpId = r.Emp.EmpId,
-        //                EmployeeCode = r.Emp.EmployeeCode,
-        //                EmployeeName = r.Emp.FirstName,
-        //                IsAllocated = r.Emp.IsAllocated,    
-
-        //                Role = r.Role.RoleName,
-        //            }).ToList();
-
-        //            result.EmployeesByRole[group.Key] = employees;
-        //        }
-
-        //        return result;
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // Log the exception (optional - use your logger here)
-        //        Console.WriteLine($"Error in GetEmployeesGroupedByRole: {ex.Message}");
-
-        //        // Optionally rethrow or return null
-        //        return null;
-        //    }
-        //}
 
 
         public async Task<EmployeeDataList?> GetEmployeesGroupedByRole()
@@ -445,6 +406,8 @@ namespace Buildflow.Library.Repository
         }
         public async Task<object?> VerifyLogin(string email, string password, string? type)
         {
+            using var connection = (NpgsqlConnection)CreateConnection();
+            await connection.OpenAsync();
             if (string.IsNullOrEmpty(type))
             {
                 // Check EmployeeDetails
@@ -459,96 +422,22 @@ namespace Buildflow.Library.Repository
                     .FirstOrDefaultAsync(v => v.Email == email);
             }
         }
-
-
-        //public async Task<List<BoardData>> GetEmployeeBoardsAsync(int empId)
-        //{
-        //    var boards = new List<BoardData>();
-
-        //    try
-        //    {
-        //        var connection = Context.Database.GetDbConnection();
-        //        var sql = "SELECT * FROM employee.get_employee_boards_with_labels_and_tickets(@EmpId);";
-
-        //        // Ensure the connection is open
-        //        if (connection.State == ConnectionState.Closed)
-        //            await connection.OpenAsync();
-
-        //        var rawResults = await connection.QueryAsync<dynamic>(sql, new { EmpId = empId });
-
-        //        foreach (var row in rawResults)
-        //        {
-        //            int boardId = row.board_id;
-        //            int labelId = row.label_id;
-
-        //            var board = boards.FirstOrDefault(b => b.BoardId == boardId);
-        //            if (board == null)
-        //            {
-        //                board = new BoardData
-        //                {
-        //                    BoardId = boardId,
-        //                    BoardName = row.board_name,
-        //                    BoardDescription = row.board_description,
-        //                    Labels = new List<BoardLabelData>()
-        //                };
-        //                boards.Add(board);
-        //            }
-
-        //            var label = board.Labels.FirstOrDefault(l => l.LabelId == labelId);
-        //            if (label == null)
-        //            {
-        //                label = new BoardLabelData
-        //                {
-        //                    LabelId = labelId,
-        //                    LabelName = row.label_name,
-        //                    Tickets = new List<TicketDetail>()
-        //                };
-        //                board.Labels.Add(label);
-        //            }
-
-        //            if (row.ticket_id != null)
-        //            {
-        //                label.Tickets.Add(new TicketDetail
-        //                {
-        //                    TicketId = row.ticket_id,
-        //                    TicketNo = row.ticket_no,
-        //                    TicketName = row.ticket_name,
-        //                    TicketDescription = row.ticket_description,
-        //                    TicketCreatedDate = row.ticket_created_date,
-        //                    TicketType = row.ticket_type,
-        //                });
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        // Replace with your actual logger if injected
-        //        Console.WriteLine($"Error fetching boards for employee {empId}: {ex.Message}");
-        //        // You can also log the full exception: ex.ToString()
-
-        //        // Optionally rethrow or return an empty list
-        //        // throw; // uncomment if you want to propagate the error
-        //    }
-
-        //    return boards;
-        //}
-
-
         public async Task<List<BoardData>> GetEmployeeBoardsAsync(int empId, int? roleId = null)
         {
             var boards = new List<BoardData>();
 
             try
             {
-                var connection = Context.Database.GetDbConnection();
-                var sql = "SELECT * FROM employee.get_employee_boards_with_labels_and_tickets_with_vendor(@EmpId, @RoleId);";
+                using var connection = new NpgsqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+                await connection.OpenAsync();
 
-                if (connection.State == ConnectionState.Closed)
-                    await connection.OpenAsync();
+                var sql = @"SELECT * 
+                    FROM employee.get_employee_boards_with_labels_and_tickets_with_vendor
+                    (@EmpId, @RoleId);";
 
-                var rawResults = await connection.QueryAsync<dynamic>(sql, new { EmpId = empId, RoleId = roleId });
+                var rows = await connection.QueryAsync<dynamic>(sql, new { EmpId = empId, RoleId = roleId });
 
-                foreach (var row in rawResults)
+                foreach (var row in rows)
                 {
                     int boardId = row.board_id;
                     int labelId = row.label_id;
@@ -587,7 +476,7 @@ namespace Buildflow.Library.Repository
                             TicketName = row.ticket_name,
                             TicketDescription = row.ticket_description,
                             TicketCreatedDate = row.ticket_created_date,
-                            TicketType = row.ticket_type,
+                            TicketType = row.ticket_type
                         });
                     }
                 }
@@ -606,7 +495,8 @@ namespace Buildflow.Library.Repository
 
             try
             {
-                var connection = Context.Database.GetDbConnection();
+                using var connection = (NpgsqlConnection)CreateConnection();
+                await connection.OpenAsync();
                 var sql = "SELECT * FROM employee.get_employee_labels_with_tickets(@EmpId);";
 
                 if (connection.State == ConnectionState.Closed)
