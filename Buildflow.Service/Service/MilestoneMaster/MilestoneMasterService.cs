@@ -33,15 +33,33 @@ namespace Buildflow.Service.Service.Milestone
 
         public Task<List<StatusMasterDto>> GetTaskStatusesAsync()
             => _repo.GetTaskStatusAsync();
-        public Task<bool> CreateProjectMilestoneAsync(ProjectMilestoneDto dto)
-          => _repo.CreateProjectMilestoneAsync(dto);
-        public Task<bool> DeleteProjectMilestoneAsync(int milestoneId)
-      => _repo.DeleteProjectMilestoneAsync(milestoneId);
-        public Task<List<ProjectMilestoneDto>> GetProjectMilestonesAsync(int projectId)
-          => _repo.GetProjectMilestonesAsync(projectId);
+        //  public Task<bool> CreateProjectMilestoneAsync(ProjectMilestoneDto dto)
+        //    => _repo.CreateProjectMilestoneAsync(dto);
+        //  public Task<bool> DeleteProjectMilestoneAsync(int milestoneId)
+        //=> _repo.DeleteProjectMilestoneAsync(milestoneId);
+        //  public Task<List<ProjectMilestoneDto>> GetProjectMilestonesAsync(int projectId)
+        //    => _repo.GetProjectMilestonesAsync(projectId);
 
-        public Task<ProjectMilestoneDto?> GetProjectMilestoneByIdAsync(int milestoneId)
-            => _repo.GetProjectMilestoneByIdAsync(milestoneId);
+        //  public Task<ProjectMilestoneDto?> GetProjectMilestoneByIdAsync(int milestoneId)
+        //      => _repo.GetProjectMilestoneByIdAsync(milestoneId);
+        public async Task<bool> CreateTaskListAsync(List<ProjectTaskDto> dtoList)
+        {
+            return await _repo.CreateTaskListAsync(dtoList);
+        }
+
+
+
+        public async Task<bool> UpdateTasksAsync(List<ProjectTaskDto> tasks)
+        {
+            return await _repo.UpdateTasksAsync(tasks);
+        }
+        public Task<BaseResponse> DeleteTaskAsync(int taskId)
+            => _repo.DeleteTaskAsync(taskId);
+        public Task<BaseResponse> DeleteMilestoneAsync(int milestoneId)
+        {
+            return _repo.DeleteMilestoneAsync(milestoneId);
+        }
+
 
     }
 }

@@ -398,19 +398,19 @@ namespace Buildflow.Api.Controllers.Project
                 return StatusCode(500, $"Error: {ex.Message}");
             }
         }
-        //[HttpPost("upsertProjectMilestones")]
-        //public async Task<ActionResult> AddMilestones(ProjectMilestoneInputDto dto)
-        //{
-        //    try
-        //    {
-        //        var result = await _projectService.InsertProjectMilestones(dto);
-        //        return Ok(result);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, $"Error: {ex.Message}");
-        //    }
-        //}
+        [HttpPost("upsertProjectMilestones")]
+        public async Task<ActionResult> AddMilestones([FromBody] ProjectMilestoneInputDto dto)
+        {
+            try
+            {
+                var result = await _projectService.InsertProjectMilestones(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
+        }
 
         [HttpPost("upsertBoq")]
 
@@ -534,6 +534,20 @@ namespace Buildflow.Api.Controllers.Project
             {
                 return StatusCode(500, new { message = "Failed to fetch approved projects", error = ex.Message });
             }
+        }
+        [HttpGet("approved/list/{projectId}")]
+        public async Task<IActionResult> GetApprovedBoqs(int projectId)
+        {
+            var data = await _projectService.GetApprovedBoqsAsync(projectId);
+            return Ok(data);
+        }
+
+        [HttpGet("approved/details/{boqId}")]
+        public async Task<IActionResult> GetApprovedBoqDetails(int boqId)
+        {
+            var data = await _projectService.GetApprovedBoqDetailsAsync(boqId);
+            if (data == null) return NotFound("BOQ not found");
+            return Ok(data);
         }
     }
 }

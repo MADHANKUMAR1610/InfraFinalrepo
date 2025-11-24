@@ -2,6 +2,7 @@
 using Buildflow.Utility.DTO;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Threading.Tasks;
 
 namespace Buildflow.Api.Controllers.Milestone
 {
@@ -54,31 +55,75 @@ namespace Buildflow.Api.Controllers.Milestone
         [HttpGet("task_status_master")]
         public async Task<IActionResult> GetTaskStatus()
             => Ok(await _service.GetTaskStatusesAsync());
-        [HttpPost("project/createMilestone")]
-        public async Task<IActionResult> Create(ProjectMilestoneDto dto)
-        {
-            var ok = await _service.CreateProjectMilestoneAsync(dto);
-            return Ok(new { success = ok });
-        }
-        [HttpDelete("project/DeleteMilestone/{milestoneId}")]
+        //[HttpPost("project/createMilestone")]
+        //public async Task<IActionResult> Create(ProjectMilestoneDto dto)
+        //{
+        //    var ok = await _service.CreateProjectMilestoneAsync(dto);
+        //    return Ok(new { success = ok });
+        //}
+        [HttpDelete("delete/{milestoneId}")]
         public async Task<IActionResult> DeleteMilestone(int milestoneId)
         {
-            var ok = await _service.DeleteProjectMilestoneAsync(milestoneId);
-            return Ok(new { success = ok });
-        }
-        [HttpGet("Get_milestone_By_projectId/{projectId}")]
-        public async Task<IActionResult> GetProjectMilestones(int projectId)
-        {
-            if (projectId <= 0) return BadRequest("Invalid projectId");
-            var data = await _service.GetProjectMilestonesAsync(projectId);
-            return Ok(data);
+            if (milestoneId <= 0)
+                return BadRequest("Invalid milestoneId");
+
+            var result = await _service.DeleteMilestoneAsync(milestoneId);
+
+            if ((bool)!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
         }
 
-        [HttpGet("Get_milestone_By_MilestoneId{milestoneId}")]
-        public async Task<IActionResult> GetByMilestoneId(int milestoneId)
+        //[HttpGet("Get_milestone_By_projectId/{projectId}")]
+        //public async Task<IActionResult> GetProjectMilestones(int projectId)
+        //{
+        //    if (projectId <= 0) return BadRequest("Invalid projectId");
+        //    var data = await _service.GetProjectMilestonesAsync(projectId);
+        //    return Ok(data);
+        //}
+
+        //[HttpGet("Get_milestone_By_MilestoneId{milestoneId}")]
+        //public async Task<IActionResult> GetByMilestoneId(int milestoneId)
+        //{
+        //    var data = await _service.GetProjectMilestoneByIdAsync(milestoneId);
+        //    return data == null ? NotFound() : Ok(data);
+        //}
+        [HttpPost("createTaskMilestone")]
+        public async Task<IActionResult> CreateTaskMilestone([FromBody] List<ProjectTaskDto> dtoList)
         {
-            var data = await _service.GetProjectMilestoneByIdAsync(milestoneId);
-            return data == null ? NotFound() : Ok(data);
+            if (dtoList == null || dtoList.Count == 0)
+                return BadRequest(new { success = false, message = "Task list cannot be empty." });
+
+            var ok = await _service.CreateTaskListAsync(dtoList);
+
+            return Ok(new
+            {
+                success = ok,
+                message = ok ? "Tasks created successfully." : "Failed to create tasks."
+            });
+        }
+
+
+
+        [HttpPut("updateTaskMilestone")]
+        public async Task<IActionResult> UpdateTaskMilestone([FromBody] List<ProjectTaskDto> tasks)
+        {
+            var result = await _service.UpdateTasksAsync(tasks);
+
+            if (!result)
+                return BadRequest("Failed to update tasks.");
+
+            return Ok("Tasks updated successfully.");
+        }
+
+        [HttpDelete("deleteTaskMilestone/{taskId}")]
+        public async Task<IActionResult> DeleteTaskMilestone(int taskId)
+        {
+            var result = await _service.DeleteTaskAsync(taskId);
+            if ((bool)result.Success)
+                return Ok(result);
+            return BadRequest(result);
         }
     }
 }

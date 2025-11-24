@@ -15,6 +15,8 @@ public partial class BoqApproval
 
     public int? UpdatedBy { get; set; }
 
+    public DateTime? ApprovedAt { get; set; }
+
     public virtual Boq? Boq { get; set; }
 
     public virtual Ticket? Ticket { get; set; }

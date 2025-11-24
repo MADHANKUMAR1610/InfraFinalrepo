@@ -45,16 +45,14 @@ namespace Buildflow.Api.Controllers.Material
 
             return Ok(result);
         }
-        [HttpGet("Materialstatus/{projectId}")]
-        public async Task<IActionResult> GetMaterialStatus(int projectId)
+        [HttpGet("aqs/materials/{projectId}")]
+        public async Task<IActionResult> GetAqsMaterials(int projectId)
         {
-            if (projectId <= 0)
-                return BadRequest("Invalid projectId");
-
-            var result = await _materialService.GetMaterialStatusAsync(projectId);
-
-            return Ok(result);
+            var materials = await _materialService.GetMaterialAsync(projectId);
+            return Ok(materials);
         }
+
+
 
         [HttpGet("material-names/{projectId}")]
         public async Task<IActionResult> GetMaterialNames(int projectId)

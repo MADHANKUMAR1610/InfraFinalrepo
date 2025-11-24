@@ -18,7 +18,7 @@ namespace Buildflow.Library.Repository
         private readonly ILogger<DailyStockRepository> _logger;
 
         public DailyStockRepository(
-            IConfiguration configuration,
+            
             BuildflowAppContext context,
             ILogger<DailyStockRepository> logger)
         {
@@ -323,6 +323,7 @@ namespace Buildflow.Library.Repository
                     Date = today,
                     DefaultQty = 0
                 };
+
                 await _context.DailyStocks.AddAsync(stock);
             }
 
@@ -331,6 +332,7 @@ namespace Buildflow.Library.Repository
 
             await _context.SaveChangesAsync();
         }
+
 
 
 

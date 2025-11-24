@@ -22,8 +22,11 @@ namespace Buildflow.Library.Repository
         private readonly IConfiguration _configuration;
         private readonly BuildflowAppContext _context;
         private readonly IDailyStockRepository _dailyStockRepository;
+        private readonly MaterialRepository _materialRepository;
 
-        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<GenericRepository<StockInward>> logger, IDailyStockRepository dailyStockRepository) : base(context, logger)
+
+
+        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<GenericRepository<StockInward>> logger, IDailyStockRepository dailyStockRepository, IMaterialRepository materialRepository) : base(context, logger)
         {
             _logger = logger;       
             _configuration = configuration;
@@ -56,6 +59,9 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockInwards.AddAsync(inward);
                 await _context.SaveChangesAsync();
+                // 🔥 Trigger engineer material calculation for AQS flow
+                await _materialRepository.GetMaterialAsync(inward.ProjectId);
+
 
                 // ✔ Update Stock ONLY when Approved
                 if (inward.Status == "Approved")
@@ -67,6 +73,7 @@ namespace Buildflow.Library.Repository
                         inwardQty: inward.QuantityReceived ?? 0
                     );
                 }
+
 
                 // Fetch vendor name
                 var vendorName = await _context.Vendors
@@ -124,6 +131,9 @@ namespace Buildflow.Library.Repository
 
                 await _context.StockOutwards.AddAsync(outward);
                 await _context.SaveChangesAsync();
+                // 🔥 Trigger engineer material calculation for AQS flow
+                await _materialRepository.GetMaterialAsync(outward.ProjectId);
+
 
                 if (outward.Status == "Approved")
                 {

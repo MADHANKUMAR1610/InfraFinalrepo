@@ -19,9 +19,10 @@ namespace Buildflow.Service.Service.Material
         {
             return await _materialRepository.GetMaterialAsync(projectId);
         }
-        public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
+        public async Task<IEnumerable<object>> GetMaterialSummaryAsync(int projectId)
         {
-            return await _materialRepository.GetMaterialStatusAsync(projectId);
+            var materials = await _materialRepository.GetMaterialSummaryAsync(projectId);
+            return materials;
         }
         public async Task<List<string>> GetMaterialNamesAsync(int projectId)
         {

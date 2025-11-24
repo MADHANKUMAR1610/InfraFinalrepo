@@ -95,7 +95,7 @@ namespace Buildflow.Library.UOW
             ProjectMilestones = new ProjectRepository(configuration, context, projectLogger);
             
             NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
-            InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger, DailyStockRepository);
+            InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger, DailyStockRepository, MaterialRepository);
             MilestoneMasterRepository = new MilestoneMasterRepository(
    _context,
    new LoggerFactory().CreateLogger<MilestoneMasterRepository>()
@@ -103,7 +103,7 @@ namespace Buildflow.Library.UOW
 
             // Corrected DailyStockRepository initialization
             DailyStockRepository = new DailyStockRepository(
-                _configuration,
+               
                 _context,
                 new LoggerFactory().CreateLogger<DailyStockRepository>()
             );

@@ -16,6 +16,7 @@ using Buildflow.Service.Service.Report;
 using Buildflow.Service.Service.Ticket;
 using Buildflow.Service.Service.Vendor;
 
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -128,17 +129,19 @@ builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepo
 
 builder.Services.AddHttpContextAccessor();
 
-// ----------------------
-// Controllers (Secure all except Login)
-// ----------------------
 builder.Services.AddControllers(options =>
 {
+    // secure all controllers by default
     options.Filters.Add(new AuthorizeFilter(
         new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
             .Build()));
 })
-.AddJsonOptions(opt => opt.JsonSerializerOptions.WriteIndented = true);
+.AddJsonOptions(opt =>
+{
+    opt.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    opt.JsonSerializerOptions.WriteIndented = true;
+});
 
 // Allow LoginController without JWT
 builder.Services.PostConfigure<MvcOptions>(options =>

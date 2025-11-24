@@ -474,40 +474,40 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
             return response;
         }
 
-        //public async Task<BaseResponse> UpsertProjectMilestoneDetails(ProjectMilestoneInputDto dto)
-        //{
-        //    using var con = CreateConnection();
-        //    var response = new BaseResponse();
+        public async Task<BaseResponse> UpsertProjectMilestoneDetails(ProjectMilestoneInputDto dto)
+        {
+            using var con = CreateConnection();
+            var response = new BaseResponse();
 
-        //    try
-        //    {
-        //        var parameters = new DynamicParameters();
-        //        parameters.Add("iproject_id", dto.ProjectId, DbType.Int32);
-        //        parameters.Add("milestone_data", JsonConvert.SerializeObject(dto.MilestoneList), DbType.String);
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("iproject_id", dto.ProjectId, DbType.Int32);
+                parameters.Add("milestone_data", JsonConvert.SerializeObject(dto.MilestoneList), DbType.String);
 
-        //        // Output parameters
-        //        parameters.Add("message", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 500);
-        //        parameters.Add("status", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 10);
+                // Output parameters
+                parameters.Add("message", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 500);
+                parameters.Add("status", dbType: DbType.String, direction: ParameterDirection.InputOutput, size: 10);
 
-        //        await con.ExecuteAsync("CALL project.insert_project_milestones(@iproject_id, @milestone_data, @message, @status);", parameters);
+                await con.ExecuteAsync("CALL project.insert_project_milestones(@iproject_id, @milestone_data, @message, @status);", parameters);
 
-        //        var status = parameters.Get<string>("status");
-        //        var message = parameters.Get<string>("message");
+                var status = parameters.Get<string>("status");
+                var message = parameters.Get<string>("message");
 
-        //        response.Success = status?.ToLower() == "true";
-        //        response.Message = message;
-        //        response.Data = new { projectid = dto.ProjectId };
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.LogError("Error inserting project milestone details: " + ex.Message);
-        //        response.Success = false;
-        //        response.Message = "An error occurred while inserting milestone details";
-        //        response.Data = false;
-        //    }
+                response.Success = status?.ToLower() == "true";
+                response.Message = message;
+                response.Data = new { projectid = dto.ProjectId };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error inserting project milestone details: " + ex.Message);
+                response.Success = false;
+                response.Message = "An error occurred while inserting milestone details";
+                response.Data = false;
+            }
 
-        //    return response;
-        //}
+            return response;
+        }
 
 
         public async Task<BaseResponse> UpsertProjectTeam(ProjectTeamInputDto dto)
@@ -901,6 +901,81 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
                 .ToListAsync();
 
             return projects;
+        }
+        public async Task<IEnumerable<ApprovedBoqListDto>> GetApprovedBoqsAsync(int projectId)
+        {
+            const string sql = @"
+  SELECT 
+    b.boq_id AS BoqId,
+    b.boq_name AS BoqName,
+    b.boq_code AS BoqCode,
+  
+    v.vendor_name AS VendorName,
+    ba.updated_by AS ApprovedBy,
+    ba.approved_at AS ApprovedAt
+FROM project.boq b
+JOIN project.boq_approval ba 
+    ON ba.boq_id = b.boq_id
+JOIN vendor.vendor v 
+    ON v.vendor_id = b.vendor_id
+WHERE ba.approval_status = 'approved'
+  AND b.project_id = @projectId
+ORDER BY ba.approved_at DESC;
+
+
+    ";
+
+            using var con = CreateConnection();
+            return await con.QueryAsync<ApprovedBoqListDto>(sql, new { projectId });
+        }
+
+        public async Task<BoqDetailsFullDto?> GetApprovedBoqDetailsAsync(int boqId)
+        {
+            const string sql = @"SELECT * FROM project.get_boq_details(@p_boq_id);";
+
+            using var con = CreateConnection();
+            var result = await con.QueryAsync(sql, new { p_boq_id = boqId });
+
+            if (!result.Any())
+                return null;
+
+            var grouped = result
+                .GroupBy(r => new
+                {
+                    boq_id = (int)r.boq_id,
+                    boq_name = (string)r.boq_name,
+                    boq_code = (string)r.boq_code,
+                    description = (string)r.description,
+                    vendor_id = (int)r.vendor_id,
+                    vendor_name = (string)r.vendor_name,
+                    project_id = (int)r.project_id,
+                    project_name = (string)r.project_name,
+                    approvers = (string)r.approvers
+                })
+                .Select(g => new BoqDetailsFullDto
+                {
+                    BoqId = g.Key.boq_id,
+                    BoqName = g.Key.boq_name,
+                    BoqCode = g.Key.boq_code,
+                   
+                    VendorId = g.Key.vendor_id,
+                    VendorName = g.Key.vendor_name,
+                    ProjectId = g.Key.project_id,
+                    ProjectName = g.Key.project_name,
+                    Approvers = System.Text.Json.JsonSerializer.Deserialize<List<ApproverDto>>(g.Key.approvers),
+                    BoqItems = g.Select(x => new BoqItemDetail
+                    {
+                        BoqItemsId = x.boq_items_id ?? 0,
+                        ItemName = x.item_name ?? "",
+                        Unit = x.unit ?? "",
+                        Quantity = x.quantity ?? 0,
+                        Price = x.price ?? 0,
+                        Total = x.total != null ? Convert.ToDouble(x.total) : 0
+                    }).ToList()
+                })
+                .FirstOrDefault();
+
+            return grouped;
         }
 
 

@@ -125,10 +125,10 @@ namespace Buildflow.Service.Service.Project
             };
         }
 
-        //public async Task<BaseResponse> InsertProjectMilestones(ProjectMilestoneInputDto dto)
-        //{
-        //    return await _unitOfWork.ProjectMilestones.UpsertProjectMilestoneDetails(dto);
-        //}
+        public async Task<BaseResponse> InsertProjectMilestones(ProjectMilestoneInputDto dto)
+        {
+            return await _unitOfWork.ProjectMilestones.UpsertProjectMilestoneDetails(dto);
+        }
 
         public async Task<BaseResponse> UpsertBoqAsync(UpsertBoqRequestDto request)
         {
@@ -138,6 +138,16 @@ namespace Buildflow.Service.Service.Project
         public async Task<IEnumerable<ProjectData>> GetApprovedProjectsByEmployeeAsync(int employeeId)
         {
             return await _unitOfWork.Projects.GetApprovedProjectsByEmployeeAsync(employeeId);
+        }
+
+        public Task<IEnumerable<ApprovedBoqListDto>> GetApprovedBoqsAsync(int projectId)
+        {
+            return _unitOfWork.Projects.GetApprovedBoqsAsync(projectId);
+        }
+
+        public Task<BoqDetailsFullDto?> GetApprovedBoqDetailsAsync(int boqId)
+        {
+            return _unitOfWork.Projects.GetApprovedBoqDetailsAsync(boqId);
         }
 
 

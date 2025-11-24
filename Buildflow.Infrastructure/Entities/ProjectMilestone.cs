@@ -17,8 +17,6 @@ public partial class ProjectMilestone
 
     public DateOnly? MilestoneEndDate { get; set; }
 
-    public string? MilestoneStatus { get; set; }
-
     public decimal? MilestoneBudget { get; set; }
 
     public decimal? ActualCost { get; set; }
@@ -35,5 +33,9 @@ public partial class ProjectMilestone
 
     public string? Remarks { get; set; }
 
+    public int Status { get; set; }
+
     public virtual Project Project { get; set; } = null!;
+
+    public virtual ICollection<ProjectTask> ProjectTasks { get; set; } = new List<ProjectTask>();
 }

@@ -64,6 +64,8 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<ProjectSector> ProjectSectors { get; set; }
 
+    public virtual DbSet<ProjectTask> ProjectTasks { get; set; }
+
     public virtual DbSet<ProjectTeam> ProjectTeams { get; set; }
 
     public virtual DbSet<ProjectType> ProjectTypes { get; set; }
@@ -247,6 +249,10 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.ApprovalStatus)
                 .HasMaxLength(255)
                 .HasColumnName("approval_status");
+            entity.Property(e => e.ApprovedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("approved_at");
             entity.Property(e => e.BoqId).HasColumnName("boq_id");
             entity.Property(e => e.TicketId).HasColumnName("ticket_id");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
@@ -812,11 +818,11 @@ public partial class BuildflowAppContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("milestone_name");
             entity.Property(e => e.MilestoneStartDate).HasColumnName("milestone_start_date");
-            entity.Property(e => e.MilestoneStatus)
-                .HasMaxLength(50)
-                .HasColumnName("milestone_status");
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.Status)
+                .HasDefaultValue(1)
+                .HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("updated_at");
@@ -919,6 +925,37 @@ public partial class BuildflowAppContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+        });
+
+        modelBuilder.Entity<ProjectTask>(entity =>
+        {
+            entity.HasKey(e => e.TaskId).HasName("project_task_pkey");
+
+            entity.ToTable("project_task", "project");
+
+            entity.Property(e => e.TaskId).HasColumnName("task_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.DelayedDays).HasColumnName("delayed_days");
+            entity.Property(e => e.DurationDays).HasColumnName("duration_days");
+            entity.Property(e => e.FinishedDate).HasColumnName("finished_date");
+            entity.Property(e => e.MilestoneId).HasColumnName("milestone_id");
+            entity.Property(e => e.PlannedEndDate).HasColumnName("planned_end_date");
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.TaskCode)
+                .HasMaxLength(100)
+                .HasColumnName("task_code");
+            entity.Property(e => e.TaskName)
+                .HasMaxLength(500)
+                .HasColumnName("task_name");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+
+            entity.HasOne(d => d.Milestone).WithMany(p => p.ProjectTasks)
+                .HasForeignKey(d => d.MilestoneId)
+                .HasConstraintName("fk_milestone");
         });
 
         modelBuilder.Entity<ProjectTeam>(entity =>

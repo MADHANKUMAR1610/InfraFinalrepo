@@ -155,11 +155,7 @@ namespace Buildflow.Library.Repository
                     if (!rejected.ContainsKey(key)) rejected[key] = 0;
                     rejected[key] += qty;
                 }
-                else
-                {
-                    if (!pending.ContainsKey(key)) pending[key] = 0;
-                    pending[key] += qty;
-                }
+                
             }
 
 
@@ -218,25 +214,31 @@ namespace Buildflow.Library.Repository
                 decimal yRem = yRow?.RemainingQty ?? 0;
 
                 decimal totalIn = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.Status == "Approved" &&
-                                x.Itemname != null &&
-                                x.Itemname.Trim().ToLower() == key)
-                    .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+     .Where(x =>
+         x.ProjectId == projectId &&
+         x.Status == "Approved" &&
+         x.Itemname != null &&
+         x.Itemname.Trim().ToLower() == key)
+     .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
 
                 decimal totalOut = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId &&
-                                x.Status == "Approved" &&
-                                x.ItemName != null &&
-                                x.ItemName.Trim().ToLower() == key)
-                    .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+    .Where(x =>
+        x.ProjectId == projectId &&
+        x.Status == "Approved" &&
+        x.ItemName != null &&
+        x.ItemName.Trim().ToLower() == key)
+    .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
 
-                decimal instock = totalIn - totalOut;
-                if (instock < 0) instock = 0;
 
-                decimal required = (yRem + requiredBase + appQty) - totalOut - instock;
-                if (required < 0) required = 0;
-             
+
+                decimal instock = totalOut;
+
+                // Required = (yesterday + baseRequired + approvedBOQ) - instock
+                decimal required = (yRem + requiredBase + appQty) - instock;
+
+                if (required < 0)
+                    required = 0;
+
 
 
                 // --------------------------
@@ -251,8 +253,23 @@ namespace Buildflow.Library.Repository
                         InStockQuantity = $"{(int)instock} {unit}",
                         RequiredQuantity = $"{(int)required} {unit}",
                         Level = ComputeLevel(required, instock),
-                        RequestStatus = appQty > 0 ? "Approved" : ""
+                        RequestStatus = ""
+
                     });
+
+                    // APPROVED BOQ row
+                    if (appQty > 0)
+                    {
+                        result.Add(new MaterialDto
+                        {
+                            SNo = s++,
+                            MaterialList = name,
+                            InStockQuantity = $"{(int)instock} {unit}",
+                            RequiredQuantity = $"{(int)appQty} {unit}",
+                            RequestStatus = "Approved",
+                            Level = ComputeLevel(appQty, instock)
+                        });
+                    }
 
                     if (pendQty > 0)
                         result.Add(new MaterialDto
@@ -396,32 +413,17 @@ namespace Buildflow.Library.Repository
             await _dailyStockRepository.ResetDailyStockAsync(projectId);
         }
 
-        public async Task<List<MaterialStatusDto>> GetMaterialStatusAsync(int projectId)
+        public async Task<IEnumerable<object>> GetMaterialSummaryAsync(int projectId)
         {
-            var today = DateTime.UtcNow.Date;
-
-            // Fetch all DailyStock rows for today
-            var dailyStocks = await _context.DailyStocks
-                .Where(d => d.ProjectId == projectId && d.Date == today)
-                .OrderByDescending(d => d.Id) // latest-written first
+            return await _context.DailyStocks
+                .Where(m => m.ProjectId == projectId)
+                .Select(m => new
+                {
+                    ItemName = m.ItemName,
+                    Required = m.RemainingQty,
+                    InStock = m.InStock
+                })
                 .ToListAsync();
-
-            // Group by item, pick most recent row
-            var latestPerItem = dailyStocks
-                .GroupBy(d => d.ItemName.ToLower().Trim())
-                .Select(g => g.First()) // latest saved entry only
-                .ToList();
-
-            // Convert to DTO
-            var result = latestPerItem.Select(d => new MaterialStatusDto
-            {
-                MaterialName = d.ItemName,
-                InStock = (int)d.InStock,
-                RequiredQty = (int)d.RemainingQty
-            })
-            .ToList();
-
-            return result;
         }
 
         public async Task<List<string>> GetAllMaterialNamesAsync(int projectId)

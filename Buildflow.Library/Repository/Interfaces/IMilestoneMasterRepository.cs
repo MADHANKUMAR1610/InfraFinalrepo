@@ -13,9 +13,15 @@ namespace Buildflow.Library.Repository.Interfaces
         Task<bool> DeleteAsync(int id);
         Task<List<StatusMasterDto>> GetProjectStatusAsync();
         Task<List<StatusMasterDto>> GetTaskStatusAsync();
-        Task<bool> CreateProjectMilestoneAsync(ProjectMilestoneDto dto);
-        Task<bool> DeleteProjectMilestoneAsync(int milestoneId);
-        Task<List<ProjectMilestoneDto>> GetProjectMilestonesAsync(int projectId);
-        Task<ProjectMilestoneDto?> GetProjectMilestoneByIdAsync(int milestoneId);
+        //    Task<bool> CreateProjectMilestoneAsync(ProjectMilestoneDto dto);
+        Task<BaseResponse> DeleteMilestoneAsync(int milestoneId);
+
+        //    Task<List<ProjectMilestoneDto>> GetProjectMilestonesAsync(int projectId);
+        //    Task<ProjectMilestoneDto?> GetProjectMilestoneByIdAsync(int milestoneId);
+        Task<bool> CreateTaskListAsync(List<ProjectTaskDto> dtoList);
+        Task<bool> UpdateTasksAsync(List<ProjectTaskDto> tasks);
+        
+        Task<BaseResponse> DeleteTaskAsync(int taskId);
+
     }
 }
