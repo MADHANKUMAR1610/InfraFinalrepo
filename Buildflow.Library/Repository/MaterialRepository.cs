@@ -155,7 +155,7 @@ namespace Buildflow.Library.Repository
                     if (!rejected.ContainsKey(key)) rejected[key] = 0;
                     rejected[key] += qty;
                 }
-                
+
             }
 
 
@@ -244,34 +244,34 @@ namespace Buildflow.Library.Repository
                 // --------------------------
                 // HARD-CODED MAIN ROW
                 // --------------------------
+                // --------------------------
+                // HARD-CODED MAIN ROW (with merged approved BOQ)
+                // --------------------------
                 if (isHardcoded)
                 {
+                    // MERGE APPROVED QTY INTO MAIN ROW
+                    decimal mergedRequired = requiredBase + appQty;
+
+                    // Final Required = (Yesterday + mergedRequired) - instock
+                    decimal finalRequired = (yRem + mergedRequired) - instock;
+                    if (finalRequired < 0)
+                        finalRequired = 0;
+
+                    // MAIN HARD-CODED ROW
                     result.Add(new MaterialDto
                     {
                         SNo = s++,
                         MaterialList = name,
                         InStockQuantity = $"{(int)instock} {unit}",
-                        RequiredQuantity = $"{(int)required} {unit}",
-                        Level = ComputeLevel(required, instock),
-                        RequestStatus = ""
+                        RequiredQuantity = $"{(int)finalRequired} {unit}",
+                        Level = ComputeLevel(finalRequired, instock),
+                        RequestStatus = appQty > 0 ? "Approved" : ""
 
                     });
 
-                    // APPROVED BOQ row
-                    if (appQty > 0)
-                    {
-                        result.Add(new MaterialDto
-                        {
-                            SNo = s++,
-                            MaterialList = name,
-                            InStockQuantity = $"{(int)instock} {unit}",
-                            RequiredQuantity = $"{(int)appQty} {unit}",
-                            RequestStatus = "Approved",
-                            Level = ComputeLevel(appQty, instock)
-                        });
-                    }
-
+                    // SEPARATE PENDING ROW
                     if (pendQty > 0)
+                    {
                         result.Add(new MaterialDto
                         {
                             SNo = s++,
@@ -280,8 +280,11 @@ namespace Buildflow.Library.Repository
                             RequiredQuantity = $"{(int)pendQty} {unit}",
                             RequestStatus = "Pending"
                         });
+                    }
 
+                    // SEPARATE REJECTED ROW
                     if (rejQty > 0)
+                    {
                         result.Add(new MaterialDto
                         {
                             SNo = s++,
@@ -290,20 +293,10 @@ namespace Buildflow.Library.Repository
                             RequiredQuantity = $"{(int)rejQty} {unit}",
                             RequestStatus = "Rejected"
                         });
+                    }
 
-                    // SAVE ONLY APPROVED
-                    // ALWAYS SAVE BASE HARDCORED REQUIRED QTY
-                    // SAVE TO DAILYSTOCK — ONLY HARDCORED + APPROVED BOQ
-
-                    // SAVE THE EXACT CALCULATED REQUIRED — NOT BASE VALUE
-                    decimal saveRequired = required;   // store the computed requirement
-
-
-                    // but do NOT allow pending or rejected to affect saving
-                    if (appQty == 0 && pendQty > 0)
-                        continue;
-                    if (appQty == 0 && rejQty > 0)
-                        continue;
+                    // SAVE MERGED VALUES
+                    decimal saveRequired = finalRequired;
 
                     if (!todayDict.TryGetValue(key, out var tRow))
                     {
@@ -323,9 +316,9 @@ namespace Buildflow.Library.Repository
                         tRow.RemainingQty = saveRequired;
                     }
 
-
                     continue;
                 }
+
 
                 // --------------------------
                 // NEW ITEMS (NO HARD-CODED ROW)

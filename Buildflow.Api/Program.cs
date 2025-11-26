@@ -194,7 +194,6 @@ app.UseCors("AllowFrontend");
 
 app.ExceptionMiddleware();
 app.UseRouting();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
