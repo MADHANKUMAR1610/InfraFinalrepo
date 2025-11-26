@@ -70,7 +70,10 @@ namespace Buildflow.Library.UOW
             _configuration = configuration;
 
             // --- Existing Repository Initializations ---
-            TicketRepository = new TicketRepository(configuration, context, ticketLogger, DailyStockRepository );
+            // -------------------------------
+            // 1️⃣ BASE REPOSITORIES
+            // -------------------------------
+            TicketRepository = new TicketRepository(configuration, context, ticketLogger, null);
             EmployeeRepository = new EmployeeRepository(configuration, context, employeeLogger);
             reportRepository = new ReportRepository(configuration, context, reportLogger);
             Boq = new ProjectRepository(configuration, context, projectLogger);
@@ -93,33 +96,61 @@ namespace Buildflow.Library.UOW
             ProjectPermissionFinanceApprovals = new ProjectRepository(configuration, context, projectLogger);
             ProjectMilestone = new ProjectRepository(configuration, context, projectLogger);
             ProjectMilestones = new ProjectRepository(configuration, context, projectLogger);
-            
-            NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
-            InventoryRepository = new InventoryRepository(configuration, context, inventoryLogger, DailyStockRepository, MaterialRepository);
-            MilestoneMasterRepository = new MilestoneMasterRepository(
-   _context,
-   new LoggerFactory().CreateLogger<MilestoneMasterRepository>()
-);
 
-            // Corrected DailyStockRepository initialization
+            NotificationRepository = new NotificationRepository(configuration, context, notificationLogger);
+
+            // -------------------------------
+            // 2️⃣ DailyStockRepository
+            // -------------------------------
             DailyStockRepository = new DailyStockRepository(
-               
                 _context,
                 new LoggerFactory().CreateLogger<DailyStockRepository>()
             );
 
-            //  MaterialRepository depends on DailyStockRepository
+            // -------------------------------
+            // 3️⃣ MaterialRepository (depends on DailyStock)
+            // -------------------------------
             MaterialRepository = new MaterialRepository(
-                
                 _context,
                 new LoggerFactory().CreateLogger<MaterialRepository>(),
                 DailyStockRepository
             );
 
-         
-           
-            MaterialStockAlertRepository = new MaterialStockAlertRepository(_configuration, _context, new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(), MaterialRepository);
-        
+            // -------------------------------
+            // 4️⃣ InventoryRepository (depends on BOTH)
+            // -------------------------------
+            InventoryRepository = new InventoryRepository(
+                configuration,
+                _context,
+                new LoggerFactory().CreateLogger<InventoryRepository>(),
+                DailyStockRepository,
+                MaterialRepository
+            );
+
+            // -------------------------------
+            // 5️⃣ Remaining
+            // -------------------------------
+            MaterialStockAlertRepository = new MaterialStockAlertRepository(
+                configuration,
+                _context,
+                new LoggerFactory().CreateLogger<MaterialStockAlertRepository>(),
+                MaterialRepository
+            );
+
+            MilestoneMasterRepository = new MilestoneMasterRepository(
+                _context,
+                new LoggerFactory().CreateLogger<MilestoneMasterRepository>()
+            );
+
+            // Now fix TicketRepository dependency
+            TicketRepository = new TicketRepository(
+                configuration,
+                _context,
+                ticketLogger,
+                DailyStockRepository
+            );
+
+
         }
 
         public async Task<int> CompleteAsync()

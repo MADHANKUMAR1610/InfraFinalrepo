@@ -34,59 +34,51 @@ namespace Buildflow.Library.Repository
             var today = DateTime.UtcNow.Date;
             var yesterday = today.AddDays(-1);
 
-            // If today's rows already exist → skip
-            if (await _context.DailyStocks.AnyAsync(d =>
-                d.ProjectId == projectId && d.Date == today))
+            if (await _context.DailyStocks.AnyAsync(d => d.ProjectId == projectId && d.Date == today))
                 return;
 
-            // Yesterday rows
             var yesterdayStocks = await _context.DailyStocks
                 .Where(d => d.ProjectId == projectId && d.Date == yesterday)
                 .ToListAsync();
 
-            var newStocks = new List<DailyStock>();
+            var newRows = new List<DailyStock>();
 
             foreach (var item in DailyStockRequirement.RequiredStock)
             {
                 string itemName = item.Key;
-                decimal todayHardcoded = item.Value;
+                decimal baseReq = item.Value;
 
-                decimal yesterdayRemaining =
-                    yesterdayStocks.FirstOrDefault(x => x.ItemName == itemName)?.RemainingQty ?? 0;
+                decimal yesterdayRem = yesterdayStocks.FirstOrDefault(x =>
+                                        x.ItemName.ToLower() == itemName.ToLower())
+                                        ?.RemainingQty ?? 0;
 
-                // Total Inward/Outward up to today
-                decimal totalInward = await _context.StockInwards
-                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName)
+                decimal TI = await _context.StockInwards
+                    .Where(x => x.ProjectId == projectId && x.Itemname == itemName && x.Status == "Approved")
                     .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
 
-                decimal totalOutward = await _context.StockOutwards
-                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName)
+                decimal TO = await _context.StockOutwards
+                    .Where(x => x.ProjectId == projectId && x.ItemName == itemName && x.Status == "Approved")
                     .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
 
-                decimal inStock = totalInward - totalOutward;
-                if (inStock < 0) inStock = 0;
+                decimal instock = Math.Max(TI - TO, 0);
 
-                // REQUIRED FORMULA WITHOUT BOQ (BOQ will be applied separately)
-                decimal requiredQty =
-                    (yesterdayRemaining + todayHardcoded)
-                    - totalOutward
-                    - inStock;
+                // ⭐ SAME FORMULA
+                decimal required = Math.Max(
+                    (yesterdayRem + baseReq) - instock,
+                    0);
 
-                if (requiredQty < 0)
-                    requiredQty = 0;
-
-                newStocks.Add(new DailyStock
+                newRows.Add(new DailyStock
                 {
                     ProjectId = projectId,
                     ItemName = itemName,
-                    DefaultQty = todayHardcoded,
-                    RemainingQty = requiredQty,
-                    InStock = inStock,
+                    DefaultQty = baseReq,
+                    RemainingQty = required,
+                    InStock = instock,
                     Date = today
                 });
             }
 
-            await _context.DailyStocks.AddRangeAsync(newStocks);
+            await _context.DailyStocks.AddRangeAsync(newRows);
             await _context.SaveChangesAsync();
         }
 
@@ -180,52 +172,58 @@ namespace Buildflow.Library.Repository
         {
             var today = DateTime.UtcNow.Date;
 
-            // Find today's DailyStock row for this item
             var stock = await _context.DailyStocks
                 .FirstOrDefaultAsync(d =>
                     d.ProjectId == projectId &&
                     d.ItemName == itemName &&
                     d.Date == today);
 
-            // If no row exists, create one with default values
             if (stock == null)
             {
                 stock = new DailyStock
                 {
                     ProjectId = projectId,
                     ItemName = itemName,
-                    DefaultQty = 0,
-                    RemainingQty = 0,
-                    InStock = 0,
+                    DefaultQty = 0m,
+                    RemainingQty = 0m,
+                    InStock = 0m,
                     Date = today
                 };
 
                 await _context.DailyStocks.AddAsync(stock);
             }
 
-            // Fetch totals from DB
             decimal totalInward = await _context.StockInwards
-                .Where(x => x.ProjectId == projectId && x.Itemname == itemName)
-                .SumAsync(x => (decimal?)x.QuantityReceived ?? 0);
+                .Where(x => x.ProjectId == projectId &&
+                            x.Itemname.ToLower() == itemName.ToLower() &&
+                            x.Status == "Approved")
+                .SumAsync(x => (decimal?)x.QuantityReceived ?? 0m);
 
             decimal totalOutward = await _context.StockOutwards
-                .Where(x => x.ProjectId == projectId && x.ItemName == itemName)
-                .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0);
+                .Where(x => x.ProjectId == projectId &&
+                            x.ItemName.ToLower() == itemName.ToLower() &&
+                            x.Status == "Approved")
+                .SumAsync(x => (decimal?)x.IssuedQuantity ?? 0m);
 
-            // InStock calculation
-            stock.InStock = totalInward - totalOutward;
-            if (stock.InStock < 0)
-                stock.InStock = 0;
+            // InStock formula
+            stock.InStock = Math.Max(totalInward - totalOutward, 0m);
+            // Safe values (no ?? needed)
+            decimal defaultQty = stock.DefaultQty;
+            decimal remainingQty = stock.RemainingQty;
+            decimal instock = stock.InStock ?? 0m;
 
-            // NEW RemainingQty Formula
-            // Remaining BOQ qty = RemainingQty - outward + inward
-            stock.RemainingQty = stock.RemainingQty - outwardQty + inwardQty;
+            // Required calculation
+            stock.RemainingQty = Math.Max(
+                (defaultQty + remainingQty) - instock,
+                0m
+            );
 
-            if (stock.RemainingQty < 0)
-                stock.RemainingQty = 0;
+
+
 
             await _context.SaveChangesAsync();
         }
+
 
 
         // --------------------------------------------------------------------

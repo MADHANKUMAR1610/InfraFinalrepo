@@ -17,6 +17,7 @@ namespace Buildflow.Library.Repository
     {
         private readonly BuildflowAppContext _context;
         private readonly ILogger<MaterialRepository> _logger;
+        
         private readonly IDailyStockRepository _dailyStockRepository;
 
         public MaterialRepository(
@@ -45,7 +46,8 @@ namespace Buildflow.Library.Repository
             var today = DateTime.UtcNow.Date;
             var yesterday = today.AddDays(-1);
 
-            await _daily_stock_repository_reset_check(projectId); // keep behavior same: ensure base rows
+            await _dailyStockRepository.ResetDailyStockAsync(projectId);
+             // keep behavior same: ensure base rows
 
             // --------------------------
             // LOAD DB DATA
@@ -234,10 +236,9 @@ namespace Buildflow.Library.Repository
                 decimal instock = totalOut;
 
                 // Required = (yesterday + baseRequired + approvedBOQ) - instock
-                decimal required = (yRem + requiredBase + appQty) - instock;
-
-                if (required < 0)
-                    required = 0;
+                decimal required = Math.Max(
+     (yRem + requiredBase + appQty) - instock,
+     0);
 
 
 

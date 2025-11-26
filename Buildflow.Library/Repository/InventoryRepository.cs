@@ -18,20 +18,22 @@ namespace Buildflow.Library.Repository
 {
     public class InventoryRepository : GenericRepository<StockInward>, IInventoryRepository
     {
-        private readonly ILogger<GenericRepository<StockInward>> _logger;
+        private readonly ILogger<InventoryRepository> _logger;
         private readonly IConfiguration _configuration;
         private readonly BuildflowAppContext _context;
         private readonly IDailyStockRepository _dailyStockRepository;
-        private readonly MaterialRepository _materialRepository;
+        private readonly IMaterialRepository _materialRepository;
 
 
 
-        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<GenericRepository<StockInward>> logger, IDailyStockRepository dailyStockRepository, IMaterialRepository materialRepository) : base(context, logger)
+
+        public InventoryRepository(IConfiguration configuration,BuildflowAppContext context, ILogger<InventoryRepository> logger, IDailyStockRepository dailyStockRepository, IMaterialRepository materialRepository) : base(context, logger)
         {
             _logger = logger;       
             _configuration = configuration;
             _context = context;
             _dailyStockRepository = dailyStockRepository;
+            _materialRepository = materialRepository;
         }
 
 
@@ -57,10 +59,30 @@ namespace Buildflow.Library.Repository
                     Remarks = dto.Remarks
                 };
 
+              
                 await _context.StockInwards.AddAsync(inward);
                 await _context.SaveChangesAsync();
-                // 🔥 Trigger engineer material calculation for AQS flow
-                await _materialRepository.GetMaterialAsync(inward.ProjectId);
+
+                // 🔥 Trigger engineer material calculation for AQS flow (safe)
+                try
+                {
+                    if (_materialRepository != null)
+                    {
+                        await _materialRepository.GetMaterialAsync(inward.ProjectId);
+                    }
+                    else
+                    {
+                        _logger.LogError("_materialRepository is null in InventoryRepository");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex,
+                        "Error while recalculating materials for project {ProjectId} after StockInward",
+                        inward.ProjectId);
+                    // do NOT rethrow – saving already succeeded
+                }
+
 
 
                 // ✔ Update Stock ONLY when Approved
