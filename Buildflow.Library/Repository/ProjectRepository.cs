@@ -510,33 +510,33 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
         }
 
 
-        public async Task<BaseResponse> UpsertProjectTeam(ProjectTeamInputDto dto)
-        {
-            using var con = CreateConnection();
-            var response = new BaseResponse();
+        //public async Task<BaseResponse> UpsertProjectTeam(ProjectTeamInputDto dto)
+        //{
+        //    using var con = CreateConnection();
+        //    var response = new BaseResponse();
 
-            try
-            {
-                var parameters = new DynamicParameters();
-                parameters.Add("iproject_id", dto.ProjectId, DbType.Int32);
-                parameters.Add("project_team_data", JsonConvert.SerializeObject(dto.TeamList), DbType.String);
+        //    try
+        //    {
+        //        var parameters = new DynamicParameters();
+        //        parameters.Add("iproject_id", dto.ProjectId, DbType.Int32);
+        //        parameters.Add("project_team_data", JsonConvert.SerializeObject(dto.TeamList), DbType.String);
 
-                response = await con.QueryFirstAsync<BaseResponse>(
-                    "project.upsert_project_team",
-                    parameters,
-                    commandType: CommandType.StoredProcedure
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Error inserting project team: " + ex.Message);
-                response.Success = false;
-                response.Message = "An error occurred while inserting team members";
-                response.Data = false;
-            }
+        //        response = await con.QueryFirstAsync<BaseResponse>(
+        //            "project.upsert_project_team",
+        //            parameters,
+        //            commandType: CommandType.StoredProcedure
+        //        );
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        _logger.LogError("Error inserting project team: " + ex.Message);
+        //        response.Success = false;
+        //        response.Message = "An error occurred while inserting team members";
+        //        response.Data = false;
+        //    }
 
-            return response;
-        }
+        //    return response;
+        //}
 
 
 
@@ -548,6 +548,9 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
                 var conn = Context.Database.GetDbConnection();
                 if (conn.State != ConnectionState.Open)
                     await conn.OpenAsync();
+
+
+
 
                 // Create command
                 await using var command = conn.CreateCommand();
