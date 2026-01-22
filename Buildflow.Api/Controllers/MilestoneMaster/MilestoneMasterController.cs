@@ -131,7 +131,7 @@ namespace Buildflow.Api.Controllers.Milestone
             if (dtoList == null || dtoList.Count == 0)
                 return BadRequest(new { success = false, message = "Task list cannot be empty." });
 
-            var ok = await _service.CreateSubnalTaskListAsync(dtoList);
+            var ok = await _service.CreateSubTaskListAsync(dtoList);
 
             return Ok(new
             {
