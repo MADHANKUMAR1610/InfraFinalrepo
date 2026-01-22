@@ -125,5 +125,42 @@ namespace Buildflow.Api.Controllers.Milestone
                 return Ok(result);
             return BadRequest(result);
         }
+        [HttpPost("createSubTaskMilestone")]
+        public async Task<IActionResult> CreateSubTaskMilestone([FromBody] List<ProjectSubTaskDto> dtoList)
+        {
+            if (dtoList == null || dtoList.Count == 0)
+                return BadRequest(new { success = false, message = "Task list cannot be empty." });
+
+            var ok = await _service.CreateSubnalTaskListAsync(dtoList);
+
+            return Ok(new
+            {
+                success = ok,
+                message = ok ? "Tasks created successfully." : "Failed to create tasks."
+            });
+        }
+
+
+
+        [HttpPut("updateSubTaskMilestone")]
+        public async Task<IActionResult> UpdateSubTaskMilestone([FromBody] List<ProjectSubTaskDto> tasks)
+        {
+            var result = await _service.UpdateSubTasksAsync(tasks);
+
+            if (!result)
+                return BadRequest("Failed to update tasks.");
+
+            return Ok("Tasks updated successfully.");
+        }
+
+        [HttpDelete("deleteSubTaskMilestone/{taskId}")]
+        public async Task<IActionResult> DeleteSubTaskMilestone(int subtaskId)
+        {
+            var result = await _service.DeleteSubTaskAsync(subtaskId);
+            if ((bool)result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
     }
 }

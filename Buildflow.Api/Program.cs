@@ -131,7 +131,10 @@ builder.Services.AddScoped<MaterialStockAlertService>();
 builder.Services.AddScoped<MilestoneMasterService>();
 builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
 
+
 builder.Services.AddHttpContextAccessor();
+
+
 
 builder.Services.AddControllers(options =>
 {

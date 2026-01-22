@@ -22,6 +22,10 @@ namespace Buildflow.Library.Repository.Interfaces
         Task<bool> UpdateTasksAsync(List<ProjectTaskDto> tasks);
         
         Task<BaseResponse> DeleteTaskAsync(int taskId);
+        Task<bool> CreateSubTaskListAsync(List<ProjectSubTaskDto> dtoList);
+        Task<bool> UpdateSubTasksAsync(List<ProjectSubTaskDto> tasks);
+
+        Task<BaseResponse> DeleteSubTaskAsync(int taskId);
 
     }
 }

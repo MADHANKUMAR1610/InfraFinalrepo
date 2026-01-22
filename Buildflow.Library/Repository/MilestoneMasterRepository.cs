@@ -368,6 +368,17 @@ namespace Buildflow.Library.Repository
 
             return $"TASK{next}";
         }
+        private async Task<string> GenerateSubTaskCodeAsync()
+        {
+            var last = await _context.ProjectSubtasks
+                .OrderByDescending(t => t.SubtaskId)
+                .FirstOrDefaultAsync();
+
+            int next = (last?.SubtaskId ?? 0) + 1;
+
+            return $"SUB{next}";
+        }
+
         private static DateTime? NormalizeDate(dynamic date)
         {
             if (date == null) return null;
@@ -380,6 +391,144 @@ namespace Buildflow.Library.Repository
             return (DateTime?)date;
         }
 
+        public async Task<bool> CreateSubTaskListAsync(List<ProjectSubTaskDto> dtoList)
+        {
+            foreach (var dto in dtoList)
+            {
+                var entity = new ProjectSubtask
+                {
+                    TaskId = dto.TaskId,
+                    SubtaskCode = await GenerateSubTaskCodeAsync(),
+                    SubtaskName = dto.SubtaskName,
+                    StartDate = ToDateOnly(dto.StartDate),
+                    PlannedEndDate = ToDateOnly(dto.PlannedEndDate),
+                    FinishedDate = ToDateOnly(dto.FinishedDate),
+                    Status = dto.Status,
+                    Remarks = dto.Remarks,
+
+                    Unit = dto.Unit,
+                    TotalScope = dto.TotalScope,
+                    ExecutedWork = dto.ExecutedWork,
+                    Location = dto.Location,
+
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                CalculateDays(entity);
+                _context.ProjectSubtasks.Add(entity);
+            }
+
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+
+
+        public async Task<bool> UpdateSubTasksAsync(List<ProjectSubTaskDto> tasks)
+        {
+            foreach (var dto in tasks)
+            {
+                var entity = await _context.ProjectSubtasks.FindAsync(dto.TaskId);
+                if (entity == null) continue;
+
+                entity.SubtaskCode = dto.SubtaskCode;
+                entity.SubtaskName = dto.SubtaskName;
+                entity.StartDate = ToDateOnly(dto.StartDate);
+                entity.PlannedEndDate = ToDateOnly(dto.PlannedEndDate);
+                entity.FinishedDate = ToDateOnly(dto.FinishedDate);
+                entity.Status = dto.Status;
+                entity.Remarks = dto.Remarks;
+
+                entity.Unit = dto.Unit;
+                entity.TotalScope = dto.TotalScope;
+                entity.ExecutedWork = dto.ExecutedWork;
+                entity.Location = dto.Location;
+
+                entity.UpdatedAt = DateTime.UtcNow;
+                CalculateDays(entity);
+            }
+
+            return await _context.SaveChangesAsync() > 0;
+        }
+
+
+        // Delete with validation: if task has started, do not delete and return warning
+        public async Task<BaseResponse> DeleteSubTaskAsync(int subtaskId)
+        {
+            var response = new BaseResponse();
+            var entity = await _context.ProjectSubtasks.FindAsync(subtaskId);
+            if (entity == null)
+            {
+                response.Success = false;
+                response.Message = "Task not found.";
+                response.Data = false;
+                return response;
+            }
+
+            // Consider task started if StartDate not null OR status != null and not zero (0 = not started)
+            bool started =
+      entity.StartDate != null &&
+      entity.Status != null &&
+      entity.Status != 0;
+
+
+            if (started)
+            {
+                response.Success = false;
+                response.Message = "Cannot delete task because it has already started.";
+                response.Data = false;
+                return response;
+            }
+
+            _context.ProjectSubtasks.Remove(entity);
+            await _context.SaveChangesAsync();
+
+            response.Success = true;
+            response.Message = "Task deleted successfully.";
+            response.Data = true;
+            return response;
+        }
+
+        private void CalculateDays(ProjectSubtask entity)
+        {
+            // Use local today so calculations match user date
+            var today = DateOnly.FromDateTime(DateTime.Now);
+
+            // -------------------- DURATION --------------------
+            if (entity.StartDate.HasValue)
+            {
+                // If finished → use FinishedDate, else use today
+                var endDate = entity.FinishedDate ?? today;
+
+                // Calculate difference
+                int diff = (endDate.ToDateTime(TimeOnly.MinValue)
+                           - entity.StartDate.Value.ToDateTime(TimeOnly.MinValue)).Days;
+
+                // If end < start → task NOT started yet → duration = null
+                entity.DurationDays = diff >= 0 ? diff : (int?)null;
+            }
+            else
+            {
+                // No start → no duration
+                entity.DurationDays = null;
+            }
+
+            // -------------------- DELAY --------------------
+            if (entity.PlannedEndDate.HasValue)
+            {
+                // If finished, compare with finished date; else compare with today
+                var compareDate = entity.FinishedDate ?? today;
+
+                int delay = (compareDate.ToDateTime(TimeOnly.MinValue)
+                            - entity.PlannedEndDate.Value.ToDateTime(TimeOnly.MinValue)).Days;
+
+                // Delay cannot be negative (early finish or on-time)
+                entity.DelayedDays = delay > 0 ? delay : 0;
+            }
+            else
+            {
+                entity.DelayedDays = null;
+            }
+        }
 
     }
 }

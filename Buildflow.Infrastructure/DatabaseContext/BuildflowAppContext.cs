@@ -64,6 +64,8 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<ProjectSector> ProjectSectors { get; set; }
 
+    public virtual DbSet<ProjectSubtask> ProjectSubtasks { get; set; }
+
     public virtual DbSet<ProjectTask> ProjectTasks { get; set; }
 
     public virtual DbSet<ProjectTeam> ProjectTeams { get; set; }
@@ -120,8 +122,7 @@ public partial class BuildflowAppContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-       => optionsBuilder.UseNpgsql("Host=103.14.123.245;Database=Trackerdb_devp;Username=postgres;Password=sql@2026;");
-
+        => optionsBuilder.UseNpgsql("Host=103.14.123.245;Database=Trackerdb_devp;Username=postgres;Password=sql@2026;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -927,6 +928,47 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
         });
 
+        modelBuilder.Entity<ProjectSubtask>(entity =>
+        {
+            entity.HasKey(e => e.SubtaskId).HasName("project_subtask_pkey");
+
+            entity.ToTable("project_subtask", "project");
+
+            entity.Property(e => e.SubtaskId)
+                .HasDefaultValueSql("nextval('project.project_task_task_id_seq'::regclass)")
+                .HasColumnName("subtask_id");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.DelayedDays).HasColumnName("delayed_days");
+            entity.Property(e => e.DurationDays).HasColumnName("duration_days");
+            entity.Property(e => e.ExecutedWork).HasColumnName("executed_work");
+            entity.Property(e => e.FinishedDate).HasColumnName("finished_date");
+            entity.Property(e => e.Location)
+                .HasMaxLength(100)
+                .HasColumnName("location");
+            entity.Property(e => e.PlannedEndDate).HasColumnName("planned_end_date");
+            entity.Property(e => e.Remarks).HasColumnName("remarks");
+            entity.Property(e => e.StartDate).HasColumnName("start_date");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.SubtaskCode)
+                .HasMaxLength(50)
+                .HasColumnName("subtask_code");
+            entity.Property(e => e.SubtaskName)
+                .HasMaxLength(200)
+                .HasColumnName("subtask_name");
+            entity.Property(e => e.TaskId).HasColumnName("task_id");
+            entity.Property(e => e.TotalScope).HasColumnName("total_scope");
+            entity.Property(e => e.Unit)
+                .HasMaxLength(20)
+                .HasColumnName("unit");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
+
+            entity.HasOne(d => d.Task).WithMany(p => p.ProjectSubtasks)
+                .HasForeignKey(d => d.TaskId)
+                .HasConstraintName("fk_project_subtask_task");
+        });
+
         modelBuilder.Entity<ProjectTask>(entity =>
         {
             entity.HasKey(e => e.TaskId).HasName("project_task_pkey");
@@ -934,9 +976,7 @@ public partial class BuildflowAppContext : DbContext
             entity.ToTable("project_task", "project");
 
             entity.Property(e => e.TaskId).HasColumnName("task_id");
-            entity.Property(e => e.CreatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DelayedDays).HasColumnName("delayed_days");
             entity.Property(e => e.DurationDays).HasColumnName("duration_days");
@@ -956,15 +996,11 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.TaskName)
                 .HasMaxLength(200)
                 .HasColumnName("task_name");
-
             entity.Property(e => e.TotalScope).HasColumnName("total_scope");
             entity.Property(e => e.Unit)
                 .HasMaxLength(20)
                 .HasColumnName("unit");
-
-            entity.Property(e => e.UpdatedAt)
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
 
             entity.HasOne(d => d.Milestone).WithMany(p => p.ProjectTasks)

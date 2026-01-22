@@ -55,11 +55,25 @@ namespace Buildflow.Service.Service.Milestone
         }
         public Task<BaseResponse> DeleteTaskAsync(int taskId)
             => _repo.DeleteTaskAsync(taskId);
+
         public Task<BaseResponse> DeleteMilestoneAsync(int milestoneId)
         {
             return _repo.DeleteMilestoneAsync(milestoneId);
         }
 
+        public async Task<bool> CreateSubTaskListAsync(List<ProjectSubTaskDto> dtoList)
+        {
+            return await _repo.CreateSubTaskListAsync(dtoList);
+        }
+
+
+
+        public async Task<bool> UpdateSubTasksAsync(List<ProjectSubTaskDto> tasks)
+        {
+            return await _repo.UpdateSubTasksAsync(tasks);
+        }
+        public Task<BaseResponse> DeleteSubTaskAsync(int subtaskId)
+            => _repo.DeleteSubTaskAsync(subtaskId);
 
     }
 }

@@ -3,15 +3,15 @@ using System.Collections.Generic;
 
 namespace Buildflow.Infrastructure.Entities;
 
-public partial class ProjectTask
+public partial class ProjectSubtask
 {
+    public int SubtaskId { get; set; }
+
     public int TaskId { get; set; }
 
-    public int MilestoneId { get; set; }
+    public string? SubtaskCode { get; set; }
 
-    public string? TaskCode { get; set; }
-
-    public string TaskName { get; set; } = null!;
+    public string SubtaskName { get; set; } = null!;
 
     public DateOnly? StartDate { get; set; }
 
@@ -43,7 +43,5 @@ public partial class ProjectTask
 
     public string? Location { get; set; }
 
-    public virtual ProjectMilestone Milestone { get; set; } = null!;
-
-    public virtual ICollection<ProjectSubtask> ProjectSubtasks { get; set; } = new List<ProjectSubtask>();
+    public virtual ProjectTask Task { get; set; } = null!;
 }
