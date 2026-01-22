@@ -956,13 +956,12 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.TaskName)
                 .HasMaxLength(200)
                 .HasColumnName("task_name");
-<<<<<<< Updated upstream
-=======
+
             entity.Property(e => e.TotalScope).HasColumnName("total_scope");
             entity.Property(e => e.Unit)
                 .HasMaxLength(20)
                 .HasColumnName("unit");
->>>>>>> Stashed changes
+
             entity.Property(e => e.UpdatedAt)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
