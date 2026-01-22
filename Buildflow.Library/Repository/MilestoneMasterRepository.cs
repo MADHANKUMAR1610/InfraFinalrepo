@@ -30,7 +30,7 @@ namespace Buildflow.Library.Repository
             _context = context;
             _logger = logger;
         }
-
+        // these all are for milestonemaster CRUD operations
         public async Task<List<MilestoneMasterDto>> GetAllAsync()
         {
             return await _context.Milestonemasters
@@ -89,6 +89,7 @@ namespace Buildflow.Library.Repository
             _context.Milestonemasters.Remove(entity);
             return await _context.SaveChangesAsync() > 0;
         }
+
         public async Task<List<StatusMasterDto>> GetProjectStatusAsync()
         {
             return await _context.Projectstatusmasters
@@ -230,12 +231,16 @@ namespace Buildflow.Library.Repository
                     FinishedDate = ToDateOnly(dto.FinishedDate),
                     Status = dto.Status,
                     Remarks = dto.Remarks,
+
+                    Unit = dto.Unit,
+                    TotalScope = dto.TotalScope,
+                    ExecutedWork = dto.ExecutedWork,
+                    Location = dto.Location,
+
                     CreatedAt = DateTime.UtcNow
                 };
 
-                // calculate durations
                 CalculateDays(entity);
-
                 _context.ProjectTasks.Add(entity);
             }
 
@@ -243,32 +248,34 @@ namespace Buildflow.Library.Repository
         }
 
 
+
         public async Task<bool> UpdateTasksAsync(List<ProjectTaskDto> tasks)
         {
-            if (tasks == null || tasks.Count == 0)
-                return false;
-
             foreach (var dto in tasks)
             {
                 var entity = await _context.ProjectTasks.FindAsync(dto.TaskId);
-                if (entity == null)
-                    continue; // skip missing tasks
+                if (entity == null) continue;
 
                 entity.TaskCode = dto.TaskCode;
                 entity.TaskName = dto.TaskName;
-                entity.StartDate = ToDateOnly(NormalizeDate(dto.StartDate));
-                entity.PlannedEndDate = ToDateOnly(NormalizeDate(dto.PlannedEndDate));
-                entity.FinishedDate = ToDateOnly(NormalizeDate(dto.FinishedDate));
+                entity.StartDate = ToDateOnly(dto.StartDate);
+                entity.PlannedEndDate = ToDateOnly(dto.PlannedEndDate);
+                entity.FinishedDate = ToDateOnly(dto.FinishedDate);
                 entity.Status = dto.Status;
                 entity.Remarks = dto.Remarks;
-                entity.UpdatedAt = DateTime.UtcNow;
 
-                // Recalculate days
+                entity.Unit = dto.Unit;
+                entity.TotalScope = dto.TotalScope;
+                entity.ExecutedWork = dto.ExecutedWork;
+                entity.Location = dto.Location;
+
+                entity.UpdatedAt = DateTime.UtcNow;
                 CalculateDays(entity);
             }
 
             return await _context.SaveChangesAsync() > 0;
         }
+
 
         // Delete with validation: if task has started, do not delete and return warning
         public async Task<BaseResponse> DeleteTaskAsync(int taskId)

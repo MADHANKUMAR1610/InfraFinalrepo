@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
 namespace Buildflow.Api.Controllers.Employee
 {
     [Route("api/[controller]")]
@@ -22,7 +21,7 @@ namespace Buildflow.Api.Controllers.Employee
         private readonly BuildflowAppContext _context;
 
 
-        public EmployeeController(EmployeeService service, IConfiguration config, IUnitOfWork unitOfWork,BuildflowAppContext context)
+        public EmployeeController(EmployeeService service, IConfiguration config, IUnitOfWork unitOfWork, BuildflowAppContext context)
         {
             _service = service;
             _config = config;
@@ -30,7 +29,7 @@ namespace Buildflow.Api.Controllers.Employee
             _context = context;
         }
         [HttpPost("create-employee")]
-        
+
         public async Task<ActionResult<List<EmployeeDTO>>> CreateEmployee([FromBody] EmployeeDTO input)
         {
             var result = await _service.CreateEmployeeAsync(input);
@@ -38,7 +37,7 @@ namespace Buildflow.Api.Controllers.Employee
         }
 
         [HttpGet("Get-Employee")]
-  
+
         public async Task<ActionResult<List<GetEmployeeDto>>> GetEmployees()
         {
             var result = await _service.GetEmployees();
@@ -47,13 +46,13 @@ namespace Buildflow.Api.Controllers.Employee
 
 
         [HttpGet("Get-NewEmpId")]
-    
+
 
         public async Task<ActionResult> GetNewEmployeeId()
         {
             var emp = await _context.EmployeeDetails.OrderByDescending(e => e.EmpId).FirstOrDefaultAsync();
             Random random = new Random();
-            int NewEmpId = emp != null ? emp.EmpId + 1 :0; 
+            int NewEmpId = emp != null ? emp.EmpId + 1 : 0;
 
             return Ok("EMP#" + NewEmpId);
         }
@@ -75,5 +74,4 @@ namespace Buildflow.Api.Controllers.Employee
             return Ok(result);
         }
     }
-
 }

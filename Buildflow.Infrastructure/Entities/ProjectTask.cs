@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Buildflow.Infrastructure.Entities;
 
@@ -34,6 +35,14 @@ public partial class ProjectTask
     public int? CreatedBy { get; set; }
 
     public int? UpdatedBy { get; set; }
+
+    public string? Unit { get; set; }
+
+    public int? TotalScope { get; set; }
+
+    public int? ExecutedWork { get; set; }
+
+    public string? Location { get; set; }
 
     public virtual ProjectMilestone Milestone { get; set; } = null!;
 }
