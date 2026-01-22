@@ -120,7 +120,7 @@ public partial class BuildflowAppContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseNpgsql("Host=103.91.186.169;Database=Infratracker_dev;Username=postgres;Password=Admin@123;");
+        => optionsBuilder.UseNpgsql("Host=103.14.123.245;Database=Trackerdb_devp;Username=postgres;Password=sql@2026;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -249,10 +249,6 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.ApprovalStatus)
                 .HasMaxLength(255)
                 .HasColumnName("approval_status");
-            entity.Property(e => e.ApprovedAt)
-                .HasDefaultValueSql("now()")
-                .HasColumnType("timestamp without time zone")
-                .HasColumnName("approved_at");
             entity.Property(e => e.BoqId).HasColumnName("boq_id");
             entity.Property(e => e.TicketId).HasColumnName("ticket_id");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
@@ -569,8 +565,11 @@ public partial class BuildflowAppContext : DbContext
 
             entity.ToTable("milestonemaster", "project");
 
-            entity.Property(e => e.Code).HasMaxLength(100);
-            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.HasIndex(e => e.Code, "milestonemaster_Code_key").IsUnique();
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.Name).HasMaxLength(150);
         });
 
         modelBuilder.Entity<Notification>(entity =>
@@ -818,11 +817,11 @@ public partial class BuildflowAppContext : DbContext
                 .HasMaxLength(200)
                 .HasColumnName("milestone_name");
             entity.Property(e => e.MilestoneStartDate).HasColumnName("milestone_start_date");
+            entity.Property(e => e.MilestoneStatus)
+                .HasMaxLength(50)
+                .HasColumnName("milestone_status");
             entity.Property(e => e.ProjectId).HasColumnName("project_id");
             entity.Property(e => e.Remarks).HasColumnName("remarks");
-            entity.Property(e => e.Status)
-                .HasDefaultValue(1)
-                .HasColumnName("status");
             entity.Property(e => e.UpdatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("updated_at");
@@ -934,7 +933,9 @@ public partial class BuildflowAppContext : DbContext
             entity.ToTable("project_task", "project");
 
             entity.Property(e => e.TaskId).HasColumnName("task_id");
-            entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("created_at");
             entity.Property(e => e.CreatedBy).HasColumnName("created_by");
             entity.Property(e => e.DelayedDays).HasColumnName("delayed_days");
             entity.Property(e => e.DurationDays).HasColumnName("duration_days");
@@ -945,17 +946,19 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.StartDate).HasColumnName("start_date");
             entity.Property(e => e.Status).HasColumnName("status");
             entity.Property(e => e.TaskCode)
-                .HasMaxLength(100)
+                .HasMaxLength(50)
                 .HasColumnName("task_code");
             entity.Property(e => e.TaskName)
-                .HasMaxLength(500)
+                .HasMaxLength(200)
                 .HasColumnName("task_name");
-            entity.Property(e => e.UpdatedAt).HasColumnName("updated_at");
+            entity.Property(e => e.UpdatedAt)
+                .HasColumnType("timestamp without time zone")
+                .HasColumnName("updated_at");
             entity.Property(e => e.UpdatedBy).HasColumnName("updated_by");
 
             entity.HasOne(d => d.Milestone).WithMany(p => p.ProjectTasks)
                 .HasForeignKey(d => d.MilestoneId)
-                .HasConstraintName("fk_milestone");
+                .HasConstraintName("fk_project_task_milestone");
         });
 
         modelBuilder.Entity<ProjectTeam>(entity =>
@@ -1029,8 +1032,11 @@ public partial class BuildflowAppContext : DbContext
 
             entity.ToTable("projectstatusmaster", "project");
 
-            entity.Property(e => e.Code).HasMaxLength(100);
-            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.HasIndex(e => e.Code, "projectstatusmaster_Code_key").IsUnique();
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<PurchaseOrder>(entity =>
@@ -1407,8 +1413,11 @@ public partial class BuildflowAppContext : DbContext
 
             entity.ToTable("taskstatusmaster", "project");
 
-            entity.Property(e => e.Code).HasMaxLength(100);
-            entity.Property(e => e.Name).HasMaxLength(200);
+            entity.HasIndex(e => e.Code, "taskstatusmaster_Code_key").IsUnique();
+
+            entity.Property(e => e.Id).ValueGeneratedNever();
+            entity.Property(e => e.Code).HasMaxLength(50);
+            entity.Property(e => e.Name).HasMaxLength(100);
         });
 
         modelBuilder.Entity<Ticket>(entity =>

@@ -1,75 +1,60 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Buildflow.Utility
 {
     public class DBSettings
     {
-        public static string GetDBMasterConnection(IConfiguration configuration)
+        private static string BuildEnvConnectionString()
         {
-            var connection = string.Empty;
-            if (configuration.GetConnectionString("IsEnvironmentConnection") == "true")
-            {
-                var DBServer = Environment.GetEnvironmentVariable("DBServer");
-                var Database = Environment.GetEnvironmentVariable("Database");
-                var DBPort = Environment.GetEnvironmentVariable("DBPort");
-                var DBUser = Environment.GetEnvironmentVariable("DBUser");
-                var DBPassword = Environment.GetEnvironmentVariable("DBPassword");
+            var DBServer = Environment.GetEnvironmentVariable("DBServer");
+            var Database = Environment.GetEnvironmentVariable("Database");
+            var DBPort = Environment.GetEnvironmentVariable("DBPort");
+            var DBUser = Environment.GetEnvironmentVariable("DBUser");
+            var DBPassword = Environment.GetEnvironmentVariable("DBPassword");
 
-                connection = string.Format("Server={0};Port={1};Database={2};User Id={3};Password={4};",
-                   DBServer, DBPort, Database, DBUser, DBPassword);
-            }
-            else
+            // Validate required env vars
+            if (string.IsNullOrWhiteSpace(DBServer) ||
+                string.IsNullOrWhiteSpace(Database) ||
+                string.IsNullOrWhiteSpace(DBPort) ||
+                string.IsNullOrWhiteSpace(DBUser) ||
+                string.IsNullOrWhiteSpace(DBPassword))
             {
-                connection = configuration.GetConnectionString("SSConnection");
+                throw new Exception("Environment DB variables are missing. Please set DBServer, Database, DBPort, DBUser, DBPassword.");
             }
-            return connection;
+
+            // Use Host for Npgsql/PostgreSQL
+            return $"Host={DBServer};Port={DBPort};Database={Database};Username={DBUser};Password={DBPassword};";
         }
+
+        private static string GetConnection(IConfiguration configuration)
+        {
+            // If IsEnvironmentConnection key missing -> treat as false
+            var isEnv = configuration.GetConnectionString("IsEnvironmentConnection");
+
+            if (!string.IsNullOrWhiteSpace(isEnv) &&
+                isEnv.Equals("true", StringComparison.OrdinalIgnoreCase))
+            {
+                return BuildEnvConnectionString();
+            }
+
+            // ✅ Always use DefaultConnection from appsettings.json
+            var cs = configuration.GetConnectionString("DefaultConnection");
+
+            if (string.IsNullOrWhiteSpace(cs))
+                throw new Exception("DefaultConnection is missing in appsettings.json");
+
+            return cs;
+        }
+
+        // ✅ All methods will return same correct connection string
+        public static string GetDBMasterConnection(IConfiguration configuration)
+            => GetConnection(configuration);
 
         public static string GetCustomerDBConnection(IConfiguration configuration)
-        {
-            var connection = string.Empty;
-            if (configuration.GetConnectionString("IsEnvironmentConnection") == "true")
-            {
-                var DBServer = Environment.GetEnvironmentVariable("DBServer");
-                var Database = Environment.GetEnvironmentVariable("Database");
-                var DBPort = Environment.GetEnvironmentVariable("DBPort");
-                var DBUser = Environment.GetEnvironmentVariable("DBUser");
-                var DBPassword = Environment.GetEnvironmentVariable("DBPassword");
+            => GetConnection(configuration);
 
-                connection = string.Format("Server={0};Port={1};Database={2};User Id={3};Password={4};",
-                   DBServer, DBPort, Database, DBUser, DBPassword);
-            }
-            else
-            {
-                connection = configuration.GetConnectionString("SSCustomerConnection");
-            }
-            return connection;
-        }
         public static string GetUpdatesDBConnection(IConfiguration configuration)
-        {
-            var connection = string.Empty;
-            if (configuration.GetConnectionString("IsEnvironmentConnection") == "true")
-            {
-                var DBServer = Environment.GetEnvironmentVariable("DBServer");
-                var Database = Environment.GetEnvironmentVariable("Database");
-                var DBPort = Environment.GetEnvironmentVariable("DBPort");
-                var DBUser = Environment.GetEnvironmentVariable("DBUser");
-                var DBPassword = Environment.GetEnvironmentVariable("DBPassword");
-
-                connection = string.Format("Server={0};Port={1};Database={2};User Id={3};Password={4};",
-                   DBServer, DBPort, Database, DBUser, DBPassword);
-            }
-            else
-            {
-                connection = configuration.GetConnectionString("SSUpdatesConnection");
-            }
-            return connection;
-        }
-
+            => GetConnection(configuration);
     }
 }
