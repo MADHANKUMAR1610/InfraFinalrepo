@@ -1491,7 +1491,7 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.DueDate)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("due_date");
-            entity.Property(e => e.Isapproved).HasColumnName("isapproved");
+            entity.Property(e => e.ApprovalStatus).HasColumnName("isapproved");
             entity.Property(e => e.LabelId).HasColumnName("label_id");
             entity.Property(e => e.MoveBy).HasColumnName("move_by");
             entity.Property(e => e.MoveTo).HasColumnName("move_to");

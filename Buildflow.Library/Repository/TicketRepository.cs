@@ -19,6 +19,8 @@ using System.Net.Mail;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Buildflow.Utility.ENUM;
+
 
 namespace Buildflow.Library.Repository
 {
@@ -60,7 +62,13 @@ namespace Buildflow.Library.Repository
                 command.Parameters.AddWithValue("p_name", (object?)dto.Name ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_description", (object?)dto.Description ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_due_date", (object?)dto.DueDate ?? DBNull.Value);
-                command.Parameters.AddWithValue("p_isapproved", (object?)dto.IsApproved ?? DBNull.Value);
+                command.Parameters.AddWithValue(
+        "p_isapproved",
+        dto.ApprovalStatus.HasValue
+            ? (int)dto.ApprovalStatus.Value
+            : DBNull.Value
+    );
+
                 command.Parameters.AddWithValue("p_board_id", (object?)dto.BoardId ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_label_id", (object?)dto.LabelId ?? DBNull.Value);
                 //command.Parameters.AddWithValue("p_approved_by", (object?)dto.ApprovedBy ?? DBNull.Value);
@@ -110,7 +118,7 @@ namespace Buildflow.Library.Repository
                 string status = statusParam.Value?.ToString() ?? "";
 
                 // Only run when ticket approval = true
-                if (dto.IsApproved == true)
+                if (dto.ApprovalStatus == TicketApprovalStatus.Approved)
                 {
                     // Fetch ticket with BOQ
                     var ticket = await Context.Tickets
@@ -122,7 +130,6 @@ namespace Buildflow.Library.Repository
                         int projectId = ticket.Boq!.ProjectId ?? 0;
                         int boqId = ticket.BoqId.Value;
 
-                        // Add all BOQ items into DailyStock AFTER approval
                         await _dailyStockRepository.AddNewBoqItemsToDailyStockAsync(projectId, boqId);
                     }
                 }
@@ -531,7 +538,8 @@ namespace Buildflow.Library.Repository
                     description = reader.IsDBNull(3) ? null : reader.GetString(3),
                     create_date = reader.IsDBNull(4) ? null : reader.GetDateTime(4),
                     due_date = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
-                    isapproved = reader.GetInt32(6),
+                    ApprovalStatus = (TicketApprovalStatus)reader.GetInt32(6),
+
                     updated_at = reader.IsDBNull(7) ? null : reader.GetDateTime(7),
                     created_at = reader.IsDBNull(8) ? null : reader.GetDateTime(8),
                     board_id = reader.IsDBNull(9) ? null : reader.GetInt32(9),

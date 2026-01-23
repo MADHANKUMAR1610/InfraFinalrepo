@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using Buildflow.Utility.ENUM;
+
 
 namespace Buildflow.Library.Repository
 {
@@ -140,7 +142,8 @@ namespace Buildflow.Library.Repository
 
                 int? status = null;
                 if (b.BoqId != null && ticketLatest.ContainsKey(b.BoqId))
-                    status = ticketLatest[b.BoqId].Isapproved;
+                    status = (int)ticketLatest[b.BoqId].ApprovalStatus;
+
 
                 if (status == 1)
                 {
@@ -434,7 +437,8 @@ namespace Buildflow.Library.Repository
                     on boq.BoqId equals ticket.BoqId
                 where boq.Boq!.ProjectId == projectId
                       && ticket.TicketType == "BOQ_APPROVAL"
-                      && ticket.Isapproved == 1                 // Approved only
+                      && ticket.ApprovalStatus == TicketApprovalStatus.Approved
+                      // Approved only
                       && boq.ItemName != null
                 select boq.ItemName
             )

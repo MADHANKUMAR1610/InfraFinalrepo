@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using Buildflow.Utility.ENUM;
 
 namespace Buildflow.Utility.DTO
 {
@@ -48,7 +49,8 @@ namespace Buildflow.Utility.DTO
         public DateTime? due_date { get; set; }
 
         [Column("isapproved")]
-        public int isapproved { get; set; }
+        public TicketApprovalStatus ApprovalStatus { get; set; }
+
 
         [Column("updated_at")]
         public DateTime? updated_at { get; set; }
@@ -197,7 +199,8 @@ namespace Buildflow.Utility.DTO
         public string? Name { get; set; }
         public string? Description { get; set; }
         public DateTime? DueDate { get; set; }
-        public bool? IsApproved { get; set; }
+        public TicketApprovalStatus? ApprovalStatus { get; set; }
+
         public int? BoardId { get; set; }
         public int? LabelId { get; set; }
         //public int? ApprovedBy { get; set; }
