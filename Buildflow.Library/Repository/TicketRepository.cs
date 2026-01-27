@@ -62,12 +62,16 @@ namespace Buildflow.Library.Repository
                 command.Parameters.AddWithValue("p_name", (object?)dto.Name ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_description", (object?)dto.Description ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_due_date", (object?)dto.DueDate ?? DBNull.Value);
-                command.Parameters.AddWithValue(
-        "p_isapproved",
-        dto.ApprovalStatus.HasValue
-            ? (int)dto.ApprovalStatus.Value
-            : DBNull.Value
-    );
+                var approvalStatusParam = new NpgsqlParameter("p_isapproved", NpgsqlDbType.Integer)
+                {
+                    Value = dto.ApprovalStatus.HasValue
+         ? (object)(int)dto.ApprovalStatus.Value
+         : DBNull.Value
+                };
+
+                command.Parameters.Add(approvalStatusParam);
+
+    
 
                 command.Parameters.AddWithValue("p_board_id", (object?)dto.BoardId ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_label_id", (object?)dto.LabelId ?? DBNull.Value);
