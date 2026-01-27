@@ -48,7 +48,7 @@ namespace Buildflow.Utility.DTO
         [Column("due_date")]
         public DateTime? due_date { get; set; }
 
-        [Column("isapproved")]
+        [Column("approval_status")]
         public TicketApprovalStatus ApprovalStatus { get; set; }
 
 

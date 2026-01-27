@@ -437,7 +437,7 @@ namespace Buildflow.Library.Repository
                     on boq.BoqId equals ticket.BoqId
                 where boq.Boq!.ProjectId == projectId
                       && ticket.TicketType == "BOQ_APPROVAL"
-                      && ticket.ApprovalStatus == TicketApprovalStatus.Approved
+                      && ticket.ApprovalStatus == (int) TicketApprovalStatus.Approved
                       // Approved only
                       && boq.ItemName != null
                 select boq.ItemName
