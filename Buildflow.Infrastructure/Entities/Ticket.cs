@@ -1,7 +1,5 @@
-﻿using Buildflow.Utility.ENUM;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Buildflow.Utility.ENUM;
 
 namespace Buildflow.Infrastructure.Entities;
 
@@ -47,12 +45,9 @@ public partial class Ticket
 
     public int? BoqId { get; set; }
 
-   
+    public int? ApprovalStatus { get; set; }
 
-public TicketApprovalStatus ApprovalStatus { get; set; }
-
-
-public virtual EmployeeDetail? ApprovedByNavigation { get; set; }
+    public virtual EmployeeDetail? ApprovedByNavigation { get; set; }
 
     public virtual EmployeeDetail? AssignByNavigation { get; set; }
 

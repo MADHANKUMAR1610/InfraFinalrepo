@@ -1474,6 +1474,9 @@ public partial class BuildflowAppContext : DbContext
             entity.ToTable("tickets", "ticket");
 
             entity.Property(e => e.TicketId).HasColumnName("ticket_id");
+            entity.Property(e => e.ApprovalStatus)
+                .HasDefaultValue(0)
+                .HasColumnName("approval_status");
             entity.Property(e => e.ApprovedBy).HasColumnName("approved_by");
             entity.Property(e => e.AssignBy).HasColumnName("assign_by");
             entity.Property(e => e.BoardId).HasColumnName("board_id");
@@ -1491,7 +1494,6 @@ public partial class BuildflowAppContext : DbContext
             entity.Property(e => e.DueDate)
                 .HasColumnType("timestamp without time zone")
                 .HasColumnName("due_date");
-            entity.Property(e => e.ApprovalStatus).HasColumnName("isapproved");
             entity.Property(e => e.LabelId).HasColumnName("label_id");
             entity.Property(e => e.MoveBy).HasColumnName("move_by");
             entity.Property(e => e.MoveTo).HasColumnName("move_to");

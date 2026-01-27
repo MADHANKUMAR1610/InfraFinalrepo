@@ -47,6 +47,8 @@ namespace Buildflow.Library.Repository
         public IDbConnection CreateConnection() => new NpgsqlConnection(_configuration.GetConnectionString("DefaultConnection"));
         public async Task<(int TicketId, string Message, string Status)> UpdateTicketById(UpdateTicketDto dto)
         {
+            if (dto.TicketId <= 0)
+                return (0, "Invalid Ticket Id", "Error");
             NpgsqlConnection? connection = null;
             try
             {
@@ -54,50 +56,33 @@ namespace Buildflow.Library.Repository
                 await connection.OpenAsync();
 
                 //var command = new NpgsqlCommand("CALL ticket.update_ticket_sp(@p_ticket_id, @p_ticket_no, @p_name, @p_description, @p_due_date, @p_isapproved, @p_board_id, @p_label_id, @p_approved_by, @p_created_by, @p_updated_by, @assign_to, @assign_by, @p_move_to, @p_move_by, @p_ticket_label, @p_ticket_type, @p_project_id, @message, @status)", connection);
-                var command = new NpgsqlCommand("CALL ticket.update_ticket_by_id(@p_ticket_id, @p_name, @p_description, @p_due_date, @p_isapproved, @p_board_id, @p_label_id, @p_updated_by, @assign_to, @assign_by, @p_move_to, @p_move_by, @p_ticket_type, @message, @status)", connection);
-
-
+                var command = new NpgsqlCommand(
+ "CALL ticket.update_ticket_by_id(@p_ticket_id, @p_name, @p_description, @p_due_date, @p_approval_status, @p_board_id, @p_label_id, @p_updated_by, @assign_to, @assign_by, @p_move_to, @p_move_by, @p_ticket_type, @message, @status)",
+ connection);
                 command.Parameters.AddWithValue("p_ticket_id", dto.TicketId);
-                //command.Parameters.AddWithValue("p_ticket_no", (object?)dto.TicketNo ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_name", (object?)dto.Name ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_description", (object?)dto.Description ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_due_date", (object?)dto.DueDate ?? DBNull.Value);
-                var approvalStatusParam = new NpgsqlParameter("p_isapproved", NpgsqlDbType.Integer)
-                {
-                    Value = dto.ApprovalStatus.HasValue
-         ? (object)(int)dto.ApprovalStatus.Value
-         : DBNull.Value
-                };
 
-                command.Parameters.Add(approvalStatusParam);
-
-    
-
+                command.Parameters.AddWithValue("p_approval_status", (object?)dto.ApprovalStatus ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_board_id", (object?)dto.BoardId ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_label_id", (object?)dto.LabelId ?? DBNull.Value);
-                //command.Parameters.AddWithValue("p_approved_by", (object?)dto.ApprovedBy ?? DBNull.Value);
-                //command.Parameters.AddWithValue("p_created_by", (object?)dto.CreatedBy ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_updated_by", (object?)dto.UpdatedBy ?? DBNull.Value);
-                //command.Parameters.AddWithValue("assign_to", (object?)dto.AssignTo ?? DBNull.Value);
+
                 command.Parameters.Add(new NpgsqlParameter("assign_to", NpgsqlDbType.Array | NpgsqlDbType.Integer)
                 {
                     Value = dto.AssignTo ?? (object)DBNull.Value
                 });
+
                 command.Parameters.AddWithValue("assign_by", (object?)dto.AssignBy ?? DBNull.Value);
-                //command.Parameters.AddWithValue("p_move_to", (object?)dto.MoveTo ?? DBNull.Value);
+
                 command.Parameters.Add(new NpgsqlParameter("p_move_to", NpgsqlDbType.Array | NpgsqlDbType.Integer)
                 {
                     Value = dto.MoveTo ?? (object)DBNull.Value
                 });
+
                 command.Parameters.AddWithValue("p_move_by", (object?)dto.MoveBy ?? DBNull.Value);
-                //command.Parameters.AddWithValue("p_ticket_label", (object?)dto.TicketLabel ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_ticket_type", (object?)dto.TicketType ?? DBNull.Value);
-                //command.Parameters.AddWithValue("p_project_id", (object?)dto.ProjectId ?? DBNull.Value);
-              
-
-              
-
-
                 // OUTPUT params
                 var messageParam = new NpgsqlParameter("message", DbType.String)
                 {
