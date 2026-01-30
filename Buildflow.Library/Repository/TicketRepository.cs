@@ -64,7 +64,15 @@ namespace Buildflow.Library.Repository
                 command.Parameters.AddWithValue("p_description", (object?)dto.Description ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_due_date", (object?)dto.DueDate ?? DBNull.Value);
 
-                command.Parameters.AddWithValue("p_approval_status", (object?)dto.ApprovalStatus ?? DBNull.Value);
+                command.Parameters.Add(
+    new NpgsqlParameter("p_approval_status", NpgsqlDbType.Integer)
+    {
+        Value = dto.ApprovalStatus.HasValue
+            ? (int)dto.ApprovalStatus.Value
+            : DBNull.Value
+    }
+);
+
                 command.Parameters.AddWithValue("p_board_id", (object?)dto.BoardId ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_label_id", (object?)dto.LabelId ?? DBNull.Value);
                 command.Parameters.AddWithValue("p_updated_by", (object?)dto.UpdatedBy ?? DBNull.Value);
@@ -167,8 +175,21 @@ namespace Buildflow.Library.Repository
 
             // Add parameters
             //cmd.Parameters.Add(new NpgsqlParameter("p_project_id", NpgsqlTypes.NpgsqlDbType.Integer) { Value = dto.ProjectId });
-            cmd.Parameters.Add(new NpgsqlParameter("p_ticket_type", NpgsqlTypes.NpgsqlDbType.Varchar) { Value = dto.TicketType });
-            cmd.Parameters.Add(new NpgsqlParameter("p_assign_to", NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer) { Value = dto.AssignTo });
+            cmd.Parameters.Add(new NpgsqlParameter("p_ticket_type", NpgsqlDbType.Varchar)
+            {
+                Value = !string.IsNullOrWhiteSpace(dto.TicketType)
+        ? dto.TicketType
+        : "PROJECT"
+            });
+
+            cmd.Parameters.Add(new NpgsqlParameter("p_assign_to",
+    NpgsqlDbType.Array | NpgsqlDbType.Integer)
+            {
+                Value = dto.AssignTo != null && dto.AssignTo.Any()
+        ? dto.AssignTo
+        : Array.Empty<int>()   
+            });
+
             cmd.Parameters.Add(new NpgsqlParameter("p_created_by", NpgsqlTypes.NpgsqlDbType.Integer) { Value = dto.CreatedBy });
 
             // New BOQ ID parameter
@@ -235,9 +256,11 @@ namespace Buildflow.Library.Repository
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "CreateTicket failed");
                 response.Success = false;
-                response.Message = "Error";
+                response.Message = ex.Message; // TEMP ONLY
             }
+
 
             return response;
         }

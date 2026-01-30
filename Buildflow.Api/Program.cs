@@ -16,7 +16,6 @@ using Buildflow.Service.Service.Report;
 using Buildflow.Service.Service.Ticket;
 using Buildflow.Service.Service.Vendor;
 
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -30,6 +29,7 @@ using Serilog;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
 AppContext.SetSwitch(
     "Npgsql.EnableLegacyTimestampBehavior",
     true
@@ -46,7 +46,7 @@ builder.Host.UseSerilog((context, config) =>
 builder.Services.AddEndpointsApiExplorer();
 
 // ----------------------
-// CORS FIXED
+// CORS
 // ----------------------
 var corsOrigins = builder.Configuration["Cors:HostName"]
     .Split(",", StringSplitOptions.RemoveEmptyEntries);
@@ -63,7 +63,7 @@ builder.Services.AddCors(options =>
 });
 
 // ----------------------
-// JWT Setup
+// JWT
 // ----------------------
 var jwt = builder.Configuration.GetSection("Jwt");
 
@@ -79,7 +79,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
         ValidIssuer = jwt["Issuer"],
         ValidAudience = jwt["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]))
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwt["Key"])
+        )
     };
 });
 
@@ -88,10 +90,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 // ----------------------
 builder.Services.AddDbContext<BuildflowAppContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.UseNpgsql(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    );
 });
 
+// ----------------------
 // FORM UPLOAD LIMIT
+// ----------------------
 builder.Services.Configure<FormOptions>(o =>
 {
     o.MultipartBodyLengthLimit = 100_000_000;
@@ -131,14 +137,13 @@ builder.Services.AddScoped<MaterialStockAlertService>();
 builder.Services.AddScoped<MilestoneMasterService>();
 builder.Services.AddScoped<IMaterialStockAlertRepository, MaterialStockAlertRepository>();
 
-
 builder.Services.AddHttpContextAccessor();
 
-
-
+// ----------------------
+// CONTROLLERS + AUTH FILTER
+// ----------------------
 builder.Services.AddControllers(options =>
 {
-    // secure all controllers by default
     options.Filters.Add(new AuthorizeFilter(
         new AuthorizationPolicyBuilder()
             .RequireAuthenticatedUser()
@@ -159,12 +164,16 @@ builder.Services.PostConfigure<MvcOptions>(options =>
 });
 
 // ----------------------
-// Swagger
+// SWAGGER
 // ----------------------
 builder.Services.AddSwaggerGen(opt =>
 {
     opt.EnableAnnotations();
-    opt.SwaggerDoc("v1", new OpenApiInfo { Title = "BuildFlowAPI", Version = "v1" });
+    opt.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "BuildFlow API",
+        Version = "v1"
+    });
 
     opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
@@ -175,10 +184,13 @@ builder.Services.AddSwaggerGen(opt =>
         Scheme = "bearer"
     });
 
-    opt.AddSecurityRequirement(new OpenApiSecurityRequirement {
+    opt.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
         {
-            new OpenApiSecurityScheme {
-                Reference = new OpenApiReference {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
                     Id = "Bearer",
                     Type = ReferenceType.SecurityScheme
                 }
@@ -189,14 +201,14 @@ builder.Services.AddSwaggerGen(opt =>
 });
 
 // ----------------------
-// Build App
+// BUILD APP
 // ----------------------
 var app = builder.Build();
 
 app.UseStaticFiles();
 app.UseHttpsRedirection();
 
-// CORS MUST COME BEFORE AUTH
+// CORS BEFORE AUTH
 app.UseCors("AllowFrontend");
 
 app.ExceptionMiddleware();
@@ -204,12 +216,21 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ----------------------
+// SWAGGER ENABLED FOR PROD
+// ----------------------
 if (app.Environment.IsDevelopment() || app.Environment.IsProduction())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BuildFlow API v1");
+        c.RoutePrefix = "swagger";
+    });
 }
 
-app.MapControllers();
+// 🔥 VERY IMPORTANT FOR IIS
+app.MapGet("/", () => Results.Redirect("/swagger"));
 
+app.MapControllers();
 app.Run();
