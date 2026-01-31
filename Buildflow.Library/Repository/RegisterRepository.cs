@@ -3,6 +3,7 @@ using Buildflow.Infrastructure.Entities;
 
 using Buildflow.Library.Repository.Interfaces;
 using Buildflow.Utility.DTO;
+using Buildflow.Utility.ENUM;
 using Dapper;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -476,7 +477,12 @@ namespace Buildflow.Library.Repository
                             TicketName = row.ticket_name,
                             TicketDescription = row.ticket_description,
                             TicketCreatedDate = row.ticket_created_date,
-                            TicketType = row.ticket_type
+                            TicketType = row.ticket_type,
+                            ApprovalStatus = row.approval_status == null
+    ? (int?)null
+    : Convert.ToInt32(row.approval_status)
+
+
                         });
                     }
                 }

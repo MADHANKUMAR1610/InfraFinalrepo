@@ -108,6 +108,8 @@ namespace Buildflow.Utility.DTO
         public string TicketType { get; set; }
         public int BoardId { get; set; }
         public string BoardName { get; set; }
+        public int? ApprovalStatus { get; set; }
+
         public string BoardDescription { get; set; }
         
     }
