@@ -46,6 +46,7 @@ namespace Buildflow.Library.UOW
        
         public IDailyStockRepository DailyStockRepository { get; private set; }
         public IMilestoneMasterRepository MilestoneMasterRepository { get; private set; }
+       
 
 
         public UnitOfWork(

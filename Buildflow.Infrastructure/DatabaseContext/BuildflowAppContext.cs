@@ -112,6 +112,8 @@ public partial class BuildflowAppContext : DbContext
 
     public virtual DbSet<TicketParticipant> TicketParticipants { get; set; }
 
+    public virtual DbSet<UnitMaster> UnitMasters { get; set; }
+
     public virtual DbSet<VBoardId> VBoardIds { get; set; }
 
     public virtual DbSet<Vendor> Vendors { get; set; }
@@ -1668,6 +1670,23 @@ public partial class BuildflowAppContext : DbContext
                 .HasForeignKey(d => d.TicketId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("fk_ticket_participant_ticket");
+        });
+
+        modelBuilder.Entity<UnitMaster>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("unit_master_pkey");
+
+            entity.ToTable("unit_master", "project");
+
+            entity.HasIndex(e => e.Code, "unit_master_code_key").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Code)
+                .HasMaxLength(20)
+                .HasColumnName("code");
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .HasColumnName("name");
         });
 
         modelBuilder.Entity<VBoardId>(entity =>
