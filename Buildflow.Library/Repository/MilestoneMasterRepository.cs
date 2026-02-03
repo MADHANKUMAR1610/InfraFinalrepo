@@ -540,6 +540,86 @@ namespace Buildflow.Library.Repository
                 Code = u.Code
             }).ToList();
         }
+        public async Task<List<MilestoneSummaryDto>> GetMilestoneSummaryAsync(int projectId)
+        {
+            var statusMaster = await _context.Taskstatusmasters.ToListAsync();
+
+            string TODO = statusMaster.First(x => x.Code == "TODO").Code;
+            string PROGRESS = statusMaster.First(x => x.Code == "PROGRESS").Code;
+            string COMPLETED = statusMaster.First(x => x.Code == "COMPLETED").Code;
+            string FAIL = statusMaster.First(x => x.Code == "FAIL").Code;
+
+            var milestones = await _context.ProjectMilestones
+                .Where(m => m.ProjectId == projectId)
+                .Include(m => m.ProjectTasks)
+                .ToListAsync();
+
+            var result = milestones.Select(m =>
+            {
+                var tasks = m.ProjectTasks;
+
+                int totalScope = tasks.Sum(t => t.TotalScope ?? 0);
+                int executedWork = tasks.Sum(t => t.ExecutedWork ?? 0);
+                int balanceScope = totalScope - executedWork;
+
+                var taskStatusCodes = tasks
+                    .Where(t => t.Status != null)
+                    .Select(t => statusMaster.First(s => s.Id == t.Status).Code)
+                    .ToList();
+
+                string milestoneStatus = "Pending";
+
+                if (!taskStatusCodes.Any())
+                    milestoneStatus = "Pending";
+                else if (taskStatusCodes.All(c => c == COMPLETED))
+                    milestoneStatus = "Completed";
+                else if (taskStatusCodes.All(c => c == FAIL))
+                    milestoneStatus = "Failed";
+                else if (taskStatusCodes.Any(c => c == TODO || c == PROGRESS))
+                    milestoneStatus = "InProgress";
+
+                var finishedDate = tasks
+                    .Where(t => t.Status != null &&
+                                statusMaster.First(s => s.Id == t.Status).Code == COMPLETED &&
+                                t.FinishedDate != null)
+                    .Max(t => t.FinishedDate);
+
+                int durationDays = 0;
+                int delayDays = 0;
+
+                if (m.MilestoneStartDate.HasValue && m.MilestoneEndDate.HasValue)
+                {
+                    durationDays = (m.MilestoneEndDate.Value.ToDateTime(TimeOnly.MinValue)
+                                   - m.MilestoneStartDate.Value.ToDateTime(TimeOnly.MinValue)).Days;
+                }
+
+                if (finishedDate.HasValue && m.MilestoneEndDate.HasValue)
+                {
+                    delayDays = Math.Max(0,
+                        (finishedDate.Value.ToDateTime(TimeOnly.MinValue)
+                        - m.MilestoneEndDate.Value.ToDateTime(TimeOnly.MinValue)).Days);
+                }
+
+                return new MilestoneSummaryDto
+                {
+                    MilestoneId = m.MilestoneId,
+                    MilestoneName = m.MilestoneName,
+                    Location = tasks.FirstOrDefault()?.Location,
+                    Remarks = m.Remarks,
+                    StartDate = m.MilestoneStartDate,
+                    EndDate = m.MilestoneEndDate,
+                    FinishedDate = finishedDate,
+                    TotalScope = totalScope,
+                    ExecutedWork = executedWork,
+                    BalanceScope = balanceScope,
+                    CompletedStatus = milestoneStatus,
+                    DurationDays = durationDays,
+                    DelayDays = delayDays
+                };
+            }).ToList();
+
+            return result;
+        }
 
     }
 }

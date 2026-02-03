@@ -29,6 +29,7 @@ namespace Buildflow.Library.Repository.Interfaces
         Task<BaseResponse> DeleteSubTaskAsync(int taskId);
 
         Task<List<UnitMasterDto>> GetAllUnitMasterAsync();
+        Task<List<MilestoneSummaryDto>> GetMilestoneSummaryAsync(int projectId);
 
     }
 }
