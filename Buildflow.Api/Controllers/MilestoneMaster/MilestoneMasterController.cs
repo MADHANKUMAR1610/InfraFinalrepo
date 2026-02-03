@@ -153,8 +153,8 @@ namespace Buildflow.Api.Controllers.Milestone
             return Ok("Tasks updated successfully.");
         }
 
-        [HttpDelete("deleteSubTaskMilestone/{taskId}")]
-        public async Task<IActionResult> DeleteSubTaskMilestone(int subtaskId)
+        [HttpDelete("deleteSubTaskMilestone")]
+        public async Task<IActionResult> DeleteSubTaskMilestone([FromQuery] int subtaskId)
         {
             var result = await _service.DeleteSubTaskAsync(subtaskId);
             if ((bool)result.Success)
