@@ -167,6 +167,14 @@ namespace Buildflow.Api.Controllers.Milestone
             var result = await _service.GetAllUnitMasterAsync();
             return Ok(result);
         }
+        [HttpGet("project/{projectId}/milestone-summary")]
+        public async Task<IActionResult> GetMilestoneSummary(int projectId)
+        {
+            if (projectId <= 0)
+                return BadRequest("Invalid projectId");
 
+            var data = await _service.GetMilestoneSummaryAsync(projectId);
+            return Ok(data);
+        }
     }
 }

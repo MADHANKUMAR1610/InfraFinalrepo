@@ -873,11 +873,12 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
 
         public async Task<IEnumerable<ProjectData>> GetApprovedProjectsByEmployeeAsync(int employeeId)
         {
-            // Fetch projects where ProjectStatus is "Approved"
-            // and employee exists in any team role arrays.
             var projects = await Context.Projects
                 .AsNoTracking()
-                .Where(p => p.ProjectStatus.ToLower() == "approved" &&
+                .Where(p =>
+                    p.ProjectStatus != null &&
+                    p.ProjectStatus.ToLower() == "approved" &&
+
                     p.ProjectTeams.Any(pt =>
                         (pt.PmId != null && pt.PmId.Contains(employeeId)) ||
                         (pt.ApmId != null && pt.ApmId.Contains(employeeId)) ||
@@ -899,7 +900,6 @@ parameters.Add("p_boq_items_data", JsonConvert.SerializeObject(formattedItems), 
                     ProjectCode = p.ProjectCode,
                     ProjectStatus = p.ProjectStatus,
                     ProjectLocation = p.ProjectLocation,
-                
                 })
                 .ToListAsync();
 

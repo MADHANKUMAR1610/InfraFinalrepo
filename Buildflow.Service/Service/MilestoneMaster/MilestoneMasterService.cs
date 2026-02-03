@@ -76,6 +76,8 @@ namespace Buildflow.Service.Service.Milestone
          => _repo.GetAllUnitMasterAsync();
         public Task<BaseResponse> DeleteSubTaskAsync(int subtaskId)
             => _repo.DeleteSubTaskAsync(subtaskId);
+        public Task<List<MilestoneSummaryDto>> GetMilestoneSummaryAsync(int projectId)
+    => _repo.GetMilestoneSummaryAsync(projectId);
 
 
     }
