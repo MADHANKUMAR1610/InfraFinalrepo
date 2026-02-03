@@ -84,6 +84,6 @@ public class Report
 
     [NotMapped] // Tells EF Core to ignore this property
     [JsonPropertyName("send_by")]
-    public int? SendBy { get; set; }
+    public int? SendBy { get; set; }
 
 }

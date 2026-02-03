@@ -529,6 +529,17 @@ namespace Buildflow.Library.Repository
                 entity.DelayedDays = null;
             }
         }
+        public async Task<List<UnitMasterDto>> GetAllUnitMasterAsync()
+        {
+            var units = await _context.UnitMasters.ToListAsync();
+
+            return units.Select(u => new UnitMasterDto
+            {
+                Id = u.Id,
+                Name = u.Name,
+                Code = u.Code
+            }).ToList();
+        }
 
     }
 }

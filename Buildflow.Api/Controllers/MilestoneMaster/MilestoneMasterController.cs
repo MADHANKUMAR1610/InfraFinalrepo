@@ -161,6 +161,12 @@ namespace Buildflow.Api.Controllers.Milestone
                 return Ok(result);
             return BadRequest(result);
         }
+        [HttpGet("getunit_master")]
+        public async Task<IActionResult> GetAllUnitMaster()
+        {
+            var result = await _service.GetAllUnitMasterAsync();
+            return Ok(result);
+        }
 
     }
 }

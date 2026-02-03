@@ -72,8 +72,11 @@ namespace Buildflow.Service.Service.Milestone
         {
             return await _repo.UpdateSubTasksAsync(tasks);
         }
+        public Task<List<UnitMasterDto>> GetAllUnitMasterAsync()
+         => _repo.GetAllUnitMasterAsync();
         public Task<BaseResponse> DeleteSubTaskAsync(int subtaskId)
             => _repo.DeleteSubTaskAsync(subtaskId);
+
 
     }
 }

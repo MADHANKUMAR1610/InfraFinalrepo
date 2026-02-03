@@ -1,4 +1,5 @@
-﻿using Buildflow.Utility.DTO;
+﻿using Buildflow.Infrastructure.Entities;
+using Buildflow.Utility.DTO;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -20,12 +21,14 @@ namespace Buildflow.Library.Repository.Interfaces
         //    Task<ProjectMilestoneDto?> GetProjectMilestoneByIdAsync(int milestoneId);
         Task<bool> CreateTaskListAsync(List<ProjectTaskDto> dtoList);
         Task<bool> UpdateTasksAsync(List<ProjectTaskDto> tasks);
-        
+
         Task<BaseResponse> DeleteTaskAsync(int taskId);
         Task<bool> CreateSubTaskListAsync(List<ProjectSubTaskDto> dtoList);
         Task<bool> UpdateSubTasksAsync(List<ProjectSubTaskDto> tasks);
 
         Task<BaseResponse> DeleteSubTaskAsync(int taskId);
+
+        Task<List<UnitMasterDto>> GetAllUnitMasterAsync();
 
     }
 }
